@@ -14,13 +14,15 @@ from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings, validate_and_log_config
-from app.api import health, terms, check_items, writing_rules, documents, reviews, findings
+from app.api import auth, health, terms, check_items, writing_rules, documents, reviews, findings
 from app.db.init_db import create_tables
 from app.core.logging_config import init_logging, get_logger
 from app.core.middleware import RequestLoggingMiddleware, add_exception_handlers
 from app.core.observability.metrics import get_metrics, set_app_info
 from app.core.observability.correlation import CorrelationMiddleware
 from app.core.observability.audit import audit_logger, AuditEventType
+from app.core.security.rate_limiter import RateLimitMiddleware
+from app.core.security.headers import SecurityHeadersMiddleware
 
 # ログ設定の初期化
 init_logging()
@@ -88,6 +90,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# セキュリティヘッダーミドルウェア
+app.add_middleware(SecurityHeadersMiddleware, production=not settings.debug)
+
+# レート制限ミドルウェア
+app.add_middleware(RateLimitMiddleware)
+
 # リクエストログミドルウェア
 app.add_middleware(RequestLoggingMiddleware)
 
@@ -100,6 +108,7 @@ add_exception_handlers(app)
 logger.info("Application initialized successfully")
 
 # Include routers
+app.include_router(auth.router)
 app.include_router(health.router, tags=["Health"])
 app.include_router(terms.router)
 app.include_router(check_items.router)

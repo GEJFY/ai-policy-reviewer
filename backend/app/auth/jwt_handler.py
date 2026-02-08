@@ -56,7 +56,7 @@ class JWTHandler:
             secret_key: 署名用秘密鍵（Noneの場合設定から取得）
         """
         self.secret_key = secret_key or settings.secret_key
-        if not self.secret_key or self.secret_key == "your-secret-key-change-in-production":
+        if not self.secret_key or self.secret_key == "dev-secret-key":
             logger.warning("Using default secret key - CHANGE IN PRODUCTION!")
 
     def create_access_token(

@@ -9,8 +9,8 @@ RUN npm install
 # Copy application code
 COPY . .
 
-# Expose port
-EXPOSE 3000
+# Expose port (package.jsonで3030を使用)
+EXPOSE 3030
 
 # Development command
 CMD ["npm", "run", "dev"]

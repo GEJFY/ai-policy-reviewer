@@ -48,6 +48,23 @@ logs/
 # Docker
 docker-compose.override.yml
 
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+
+# Helm
+charts/*/charts/
+*.tgz
+
+# Coverage
+coverage.xml
+htmlcov/
+.coverage
+
 # Temporary
 tmp/
 temp/
