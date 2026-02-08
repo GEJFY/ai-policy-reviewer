@@ -1,0 +1,18 @@
+apiVersion: v2
+name: policy-reviewer
+description: AI-powered policy document review system / AI規程レビューツール
+type: application
+version: 0.2.0
+appVersion: "0.2.0"
+
+keywords:
+  - policy-review
+  - ai
+  - llm
+  - document-analysis
+
+maintainers:
+  - name: Development Team
+    email: dev@example.com
+
+dependencies: []

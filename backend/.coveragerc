@@ -1,0 +1,38 @@
+[run]
+# カバレッジ計測対象
+source = app
+branch = True
+omit =
+    */tests/*
+    */__pycache__/*
+    */venv/*
+    */migrations/*
+
+[report]
+# レポート設定
+exclude_lines =
+    # 標準的な除外パターン
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    if TYPE_CHECKING:
+    @abstractmethod
+
+# 最小カバレッジ閾値（%）
+# fail_under = 70
+
+# 未カバー行を表示
+show_missing = True
+
+# 精度
+precision = 2
+
+[html]
+# HTMLレポート出力先
+directory = htmlcov
+
+[xml]
+# XMLレポート出力先（CI用）
+output = coverage.xml

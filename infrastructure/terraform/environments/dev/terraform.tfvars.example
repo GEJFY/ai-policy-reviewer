@@ -1,0 +1,16 @@
+# Development Environment - terraform.tfvars Example
+# 開発環境用の変数設定サンプル
+# このファイルを terraform.tfvars にコピーして値を設定してください
+
+owner = "dev-team"
+
+# コンテナイメージ
+backend_image  = "ghcr.io/your-org/policy-reviewer-backend:dev"
+frontend_image = "ghcr.io/your-org/policy-reviewer-frontend:dev"
+
+# フロントエンドのデプロイ
+deploy_frontend = true
+
+# アプリケーション秘密鍵（本番では強力なランダム文字列を使用）
+# 生成コマンド: openssl rand -hex 32
+app_secret_key = "your-secret-key-change-in-production"

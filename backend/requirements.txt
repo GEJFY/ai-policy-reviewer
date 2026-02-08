@@ -1,0 +1,52 @@
+# Web Framework
+fastapi==0.128.4
+uvicorn[standard]==0.34.0
+python-multipart==0.0.18
+
+# Database
+sqlalchemy[asyncio]==2.0.46
+aiosqlite==0.20.0
+greenlet==3.1.1
+
+# Pydantic
+pydantic==2.10.5
+pydantic-settings==2.7.1
+
+# Azure Services - OpenAI/Foundry (v1 API対応)
+openai==2.17.0
+
+# Azure Document Intelligence (新パッケージ名)
+azure-ai-documentintelligence==1.0.0
+azure-identity==1.21.0
+azure-core==1.32.0
+
+# AWS Bedrock
+boto3==1.36.14
+botocore==1.36.14
+
+# GCP Vertex AI
+google-cloud-aiplatform==1.77.0
+google-auth==2.38.0
+
+# Anthropic (Claude モデル用)
+anthropic==0.44.0
+
+# Utilities
+python-dotenv==1.0.1
+tiktoken==0.8.0
+httpx==0.28.1
+PyPDF2==3.0.1
+
+# Monitoring & Metrics
+prometheus-client==0.21.1
+
+# Security & Authentication
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Development & Testing
+pytest==8.3.4
+pytest-asyncio==0.25.2
+pytest-cov==6.0.0
+ruff==0.9.4
+black==25.1.0
