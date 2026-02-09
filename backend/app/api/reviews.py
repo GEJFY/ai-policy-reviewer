@@ -101,7 +101,9 @@ async def list_reviews(
         document = db.query(Document).filter(Document.id == review.document_id).first()
 
         # Get finding counts
-        findings = db.query(ReviewFinding).filter(ReviewFinding.review_id == review.id).all()
+        findings = (
+            db.query(ReviewFinding).filter(ReviewFinding.review_id == review.id).all()
+        )
         high_count = sum(1 for f in findings if f.severity == "HIGH")
         medium_count = sum(1 for f in findings if f.severity == "MEDIUM")
         low_count = sum(1 for f in findings if f.severity == "LOW")
@@ -159,12 +161,12 @@ async def get_review(review_id: int, db: Session = Depends(get_db)):
     # Get check items status
     check_items_status = []
     review_check_items = (
-        db.query(ReviewCheckItem)
-        .filter(ReviewCheckItem.review_id == review_id)
-        .all()
+        db.query(ReviewCheckItem).filter(ReviewCheckItem.review_id == review_id).all()
     )
     for rci in review_check_items:
-        check_item = db.query(CheckItem).filter(CheckItem.id == rci.check_item_id).first()
+        check_item = (
+            db.query(CheckItem).filter(CheckItem.id == rci.check_item_id).first()
+        )
         if check_item:
             check_items_status.append(
                 ReviewCheckItemStatus(
@@ -175,7 +177,9 @@ async def get_review(review_id: int, db: Session = Depends(get_db)):
             )
 
     # Get finding counts
-    findings = db.query(ReviewFinding).filter(ReviewFinding.review_id == review_id).all()
+    findings = (
+        db.query(ReviewFinding).filter(ReviewFinding.review_id == review_id).all()
+    )
     high_count = sum(1 for f in findings if f.severity == "HIGH")
     medium_count = sum(1 for f in findings if f.severity == "MEDIUM")
     low_count = sum(1 for f in findings if f.severity == "LOW")
@@ -348,9 +352,7 @@ async def get_review_status(review_id: int, db: Session = Depends(get_db)):
 
     # Get check items progress
     check_items = (
-        db.query(ReviewCheckItem)
-        .filter(ReviewCheckItem.review_id == review_id)
-        .all()
+        db.query(ReviewCheckItem).filter(ReviewCheckItem.review_id == review_id).all()
     )
     total = len(check_items)
     completed = sum(1 for ci in check_items if ci.status == "completed")
@@ -432,7 +434,9 @@ async def execute_review_task(review_id: int, check_item_ids: list[int]):
     """
     from app.db.database import SessionLocal
 
-    logger.info(f"Starting background review task: review_id={review_id}, check_items={check_item_ids}")
+    logger.info(
+        f"Starting background review task: review_id={review_id}, check_items={check_item_ids}"
+    )
 
     db = SessionLocal()
     try:
@@ -443,7 +447,9 @@ async def execute_review_task(review_id: int, check_item_ids: list[int]):
         )
         logger.info(f"Review task completed successfully: review_id={review_id}")
     except Exception as e:
-        logger.error(f"Review execution failed: review_id={review_id}, error={e}", exc_info=True)
+        logger.error(
+            f"Review execution failed: review_id={review_id}, error={e}", exc_info=True
+        )
         review = db.query(Review).filter(Review.id == review_id).first()
         if review:
             review.status = "failed"

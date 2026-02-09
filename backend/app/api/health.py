@@ -27,6 +27,7 @@ router = APIRouter()
 
 class HealthStatus:
     """ヘルスステータス定数"""
+
     HEALTHY = "healthy"
     UNHEALTHY = "unhealthy"
     DEGRADED = "degraded"
@@ -120,8 +121,7 @@ async def detailed_health_check(
 
     unhealthy_count = sum(1 for c in checks.values() if not c["healthy"])
     degraded_count = sum(
-        1 for cb in circuit_breakers.values()
-        if cb["state"] in ["open", "half_open"]
+        1 for cb in circuit_breakers.values() if cb["state"] in ["open", "half_open"]
     )
 
     if unhealthy_count > 0:
@@ -194,6 +194,7 @@ async def system_info():
 # Internal Health Check Functions
 # =============================================================================
 
+
 async def _check_database(db: Session) -> Dict[str, Any]:
     """データベース接続をチェック"""
     try:
@@ -220,7 +221,11 @@ async def _check_llm_service() -> Dict[str, Any]:
 
         return {
             "healthy": available,
-            "active_provider": llm_service.active_provider.value if llm_service.active_provider else None,
+            "active_provider": (
+                llm_service.active_provider.value
+                if llm_service.active_provider
+                else None
+            ),
             "available_providers": [p.value for p in providers],
         }
     except Exception as e:
@@ -237,7 +242,9 @@ async def _check_ocr_service() -> Dict[str, Any]:
         from app.services.ocr_service import ocr_service, OCRServiceFactory
 
         active_provider = settings.ocr_provider.value
-        available_providers = [p.value for p in OCRServiceFactory.get_available_providers()]
+        available_providers = [
+            p.value for p in OCRServiceFactory.get_available_providers()
+        ]
         is_available = ocr_service.is_available()
 
         return {
@@ -245,7 +252,11 @@ async def _check_ocr_service() -> Dict[str, Any]:
             "active_provider": active_provider,
             "available_providers": available_providers,
             "configured": is_available,
-            "note": None if is_available else "OCR service not configured, PDF extraction may be limited",
+            "note": (
+                None
+                if is_available
+                else "OCR service not configured, PDF extraction may be limited"
+            ),
         }
     except Exception as e:
         logger.warning(f"OCR service health check failed: {str(e)}")

@@ -25,6 +25,7 @@ def _reset_rate_limiter():
 # JWT Handler Tests
 # =============================================================================
 
+
 class TestJWTHandler:
     """JWTハンドラーのテスト"""
 
@@ -129,6 +130,7 @@ class TestJWTHandler:
 # Auth API Endpoint Tests
 # =============================================================================
 
+
 class TestAuthLoginAPI:
     """ログインAPIのテスト"""
 
@@ -137,10 +139,13 @@ class TestAuthLoginAPI:
 
     def test_login_success(self):
         """正しい認証情報でログインできること"""
-        response = client.post("/api/v1/auth/login", json={
-            "username": "admin",
-            "password": "admin123",
-        })
+        response = client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": "admin",
+                "password": "admin123",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
@@ -150,26 +155,35 @@ class TestAuthLoginAPI:
 
     def test_login_wrong_password(self):
         """誤ったパスワードで401エラーになること"""
-        response = client.post("/api/v1/auth/login", json={
-            "username": "admin",
-            "password": "wrongpassword",
-        })
+        response = client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": "admin",
+                "password": "wrongpassword",
+            },
+        )
         assert response.status_code == 401
 
     def test_login_nonexistent_user(self):
         """存在しないユーザーで401エラーになること"""
-        response = client.post("/api/v1/auth/login", json={
-            "username": "nonexistent",
-            "password": "password",
-        })
+        response = client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": "nonexistent",
+                "password": "password",
+            },
+        )
         assert response.status_code == 401
 
     def test_login_empty_username(self):
         """空のユーザー名で422エラーになること"""
-        response = client.post("/api/v1/auth/login", json={
-            "username": "",
-            "password": "password",
-        })
+        response = client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": "",
+                "password": "password",
+            },
+        )
         assert response.status_code == 422
 
 
@@ -181,12 +195,15 @@ class TestAuthRegisterAPI:
 
     def test_register_success(self):
         """新規ユーザーを登録できること"""
-        response = client.post("/api/v1/auth/register", json={
-            "username": "testuser_reg",
-            "password": "securepassword123",
-            "display_name": "テストユーザー",
-            "role": "user",
-        })
+        response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "testuser_reg",
+                "password": "securepassword123",
+                "display_name": "テストユーザー",
+                "role": "user",
+            },
+        )
         assert response.status_code == 201
         data = response.json()
         assert data["username"] == "testuser_reg"
@@ -195,29 +212,38 @@ class TestAuthRegisterAPI:
 
     def test_register_duplicate_username(self):
         """重複ユーザー名で409エラーになること"""
-        response = client.post("/api/v1/auth/register", json={
-            "username": "admin",
-            "password": "securepassword123",
-            "display_name": "重複テスト",
-        })
+        response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "admin",
+                "password": "securepassword123",
+                "display_name": "重複テスト",
+            },
+        )
         assert response.status_code == 409
 
     def test_register_short_password(self):
         """短いパスワードで422エラーになること"""
-        response = client.post("/api/v1/auth/register", json={
-            "username": "shortpw",
-            "password": "short",
-            "display_name": "短いパスワード",
-        })
+        response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "shortpw",
+                "password": "short",
+                "display_name": "短いパスワード",
+            },
+        )
         assert response.status_code == 422
 
     def test_register_invalid_username(self):
         """不正なユーザー名で422エラーになること"""
-        response = client.post("/api/v1/auth/register", json={
-            "username": "invalid user!",
-            "password": "securepassword123",
-            "display_name": "不正テスト",
-        })
+        response = client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "invalid user!",
+                "password": "securepassword123",
+                "display_name": "不正テスト",
+            },
+        )
         assert response.status_code == 422
 
 
@@ -230,16 +256,22 @@ class TestAuthTokenRefreshAPI:
     def test_refresh_success(self):
         """有効なリフレッシュトークンでリフレッシュできること"""
         # まずログイン
-        login_response = client.post("/api/v1/auth/login", json={
-            "username": "admin",
-            "password": "admin123",
-        })
+        login_response = client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": "admin",
+                "password": "admin123",
+            },
+        )
         tokens = login_response.json()
 
         # リフレッシュ
-        response = client.post("/api/v1/auth/refresh", json={
-            "refresh_token": tokens["refresh_token"],
-        })
+        response = client.post(
+            "/api/v1/auth/refresh",
+            json={
+                "refresh_token": tokens["refresh_token"],
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
@@ -247,9 +279,12 @@ class TestAuthTokenRefreshAPI:
 
     def test_refresh_invalid_token(self):
         """無効なリフレッシュトークンで401エラーになること"""
-        response = client.post("/api/v1/auth/refresh", json={
-            "refresh_token": "invalid-token",
-        })
+        response = client.post(
+            "/api/v1/auth/refresh",
+            json={
+                "refresh_token": "invalid-token",
+            },
+        )
         assert response.status_code == 401
 
 
@@ -262,16 +297,22 @@ class TestAuthMeAPI:
     def test_me_authenticated(self):
         """認証済みユーザーの情報を取得できること"""
         # ログイン
-        login_response = client.post("/api/v1/auth/login", json={
-            "username": "admin",
-            "password": "admin123",
-        })
+        login_response = client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": "admin",
+                "password": "admin123",
+            },
+        )
         tokens = login_response.json()
 
         # ユーザー情報取得
-        response = client.get("/api/v1/auth/me", headers={
-            "Authorization": f"Bearer {tokens['access_token']}",
-        })
+        response = client.get(
+            "/api/v1/auth/me",
+            headers={
+                "Authorization": f"Bearer {tokens['access_token']}",
+            },
+        )
         assert response.status_code == 200
         data = response.json()
         assert data["username"] == "admin"
@@ -284,9 +325,12 @@ class TestAuthMeAPI:
 
     def test_me_invalid_token(self):
         """無効なトークンで401エラーになること"""
-        response = client.get("/api/v1/auth/me", headers={
-            "Authorization": "Bearer invalid-token",
-        })
+        response = client.get(
+            "/api/v1/auth/me",
+            headers={
+                "Authorization": "Bearer invalid-token",
+            },
+        )
         assert response.status_code == 401
 
 
@@ -299,16 +343,22 @@ class TestAuthLogoutAPI:
     def test_logout_success(self):
         """認証済みユーザーがログアウトできること"""
         # ログイン
-        login_response = client.post("/api/v1/auth/login", json={
-            "username": "admin",
-            "password": "admin123",
-        })
+        login_response = client.post(
+            "/api/v1/auth/login",
+            json={
+                "username": "admin",
+                "password": "admin123",
+            },
+        )
         tokens = login_response.json()
 
         # ログアウト
-        response = client.post("/api/v1/auth/logout", headers={
-            "Authorization": f"Bearer {tokens['access_token']}",
-        })
+        response = client.post(
+            "/api/v1/auth/logout",
+            headers={
+                "Authorization": f"Bearer {tokens['access_token']}",
+            },
+        )
         assert response.status_code == 200
         assert "ログアウト" in response.json()["message"]
 

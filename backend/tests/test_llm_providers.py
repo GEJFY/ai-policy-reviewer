@@ -19,7 +19,8 @@ from unittest.mock import MagicMock, patch, AsyncMock
 
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.config import settings, LLMProvider, ModelTier, MODEL_TIER_DEFAULTS
 from app.services.llm_service import (
@@ -117,11 +118,11 @@ class TestAWSBedrockClient:
     @pytest.mark.asyncio
     async def test_client_generate_mock(self):
         """モックを使用した生成テスト"""
-        with patch('boto3.client') as mock_boto:
+        with patch("boto3.client") as mock_boto:
             # モックレスポンスを設定
             response_body = {
                 "content": [{"text": '{"findings": []}'}],
-                "usage": {"input_tokens": 100, "output_tokens": 50}
+                "usage": {"input_tokens": 100, "output_tokens": 50},
             }
             mock_body = MagicMock()
             mock_body.read.return_value = json.dumps(response_body).encode()
@@ -153,16 +154,20 @@ class TestGCPVertexClient:
     @pytest.mark.asyncio
     async def test_client_generate_mock(self):
         """モックを使用した生成テスト"""
-        with patch('vertexai.init'):
-            with patch('vertexai.generative_models.GenerativeModel') as mock_model_class:
-                with patch('vertexai.generative_models.GenerationConfig'):
+        with patch("vertexai.init"):
+            with patch(
+                "vertexai.generative_models.GenerativeModel"
+            ) as mock_model_class:
+                with patch("vertexai.generative_models.GenerationConfig"):
                     # モックレスポンスを設定
                     mock_response = MagicMock()
                     mock_response.text = '{"findings": []}'
                     mock_response.usage_metadata = MagicMock()
                     mock_response.usage_metadata.prompt_token_count = 100
                     mock_response.usage_metadata.candidates_token_count = 50
-                    mock_model_class.return_value.generate_content.return_value = mock_response
+                    mock_model_class.return_value.generate_content.return_value = (
+                        mock_response
+                    )
 
                     client = GCPVertexClient()
                     client.model = mock_model_class.return_value
@@ -222,7 +227,7 @@ class TestUnifiedLLMService:
             content='{"findings": []}',
             model="test-model",
             provider="azure",
-            usage={"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150}
+            usage={"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150},
         )
         mock_client.generate = AsyncMock(return_value=mock_response)
 
@@ -256,8 +261,7 @@ class TestLLMProviderConnectionIntegration:
     """
 
     @pytest.mark.skipif(
-        not settings.is_azure_configured(),
-        reason="Azure OpenAI not configured"
+        not settings.is_azure_configured(), reason="Azure OpenAI not configured"
     )
     @pytest.mark.asyncio
     async def test_azure_connection(self):
@@ -267,7 +271,10 @@ class TestLLMProviderConnectionIntegration:
 
         messages = [
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": "Say 'connection test successful' in JSON format: {\"status\": \"...\"}"}
+            {
+                "role": "user",
+                "content": 'Say \'connection test successful\' in JSON format: {"status": "..."}',
+            },
         ]
 
         response = await client.generate(messages, max_tokens=100)
@@ -276,8 +283,7 @@ class TestLLMProviderConnectionIntegration:
         print(f"Azure response: {response.content}")
 
     @pytest.mark.skipif(
-        not settings.is_bedrock_configured(),
-        reason="AWS Bedrock not configured"
+        not settings.is_bedrock_configured(), reason="AWS Bedrock not configured"
     )
     @pytest.mark.asyncio
     async def test_bedrock_connection(self):
@@ -286,7 +292,10 @@ class TestLLMProviderConnectionIntegration:
         assert client.is_available()
 
         messages = [
-            {"role": "user", "content": "Say 'connection test successful' in JSON format: {\"status\": \"...\"}"}
+            {
+                "role": "user",
+                "content": 'Say \'connection test successful\' in JSON format: {"status": "..."}',
+            }
         ]
 
         response = await client.generate(messages, max_tokens=100)
@@ -295,8 +304,7 @@ class TestLLMProviderConnectionIntegration:
         print(f"Bedrock response: {response.content}")
 
     @pytest.mark.skipif(
-        not settings.is_vertex_configured(),
-        reason="GCP Vertex AI not configured"
+        not settings.is_vertex_configured(), reason="GCP Vertex AI not configured"
     )
     @pytest.mark.asyncio
     async def test_vertex_connection(self):
@@ -305,7 +313,10 @@ class TestLLMProviderConnectionIntegration:
         assert client.is_available()
 
         messages = [
-            {"role": "user", "content": "Say 'connection test successful' in JSON format: {\"status\": \"...\"}"}
+            {
+                "role": "user",
+                "content": 'Say \'connection test successful\' in JSON format: {"status": "..."}',
+            }
         ]
 
         response = await client.generate(messages, max_tokens=100)
@@ -323,7 +334,7 @@ class TestLLMResponse:
             content='{"test": true}',
             model="gpt-5.2",
             provider="azure",
-            usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
+            usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
         )
 
         assert response.content == '{"test": true}'
@@ -339,7 +350,7 @@ class TestLLMResponse:
             model="test-model",
             provider="test",
             usage={},
-            raw_response=raw
+            raw_response=raw,
         )
 
         assert response.raw_response == raw
@@ -347,10 +358,7 @@ class TestLLMResponse:
     def test_llm_response_default_raw(self):
         """デフォルトraw_responseのテスト"""
         response = LLMResponse(
-            content="test",
-            model="test-model",
-            provider="test",
-            usage={}
+            content="test", model="test-model", provider="test", usage={}
         )
 
         assert response.raw_response is None
@@ -368,7 +376,7 @@ class TestRetryLogic:
             content='{"result": "success"}',
             model="test",
             provider="azure",
-            usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
+            usage={"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
         )
 
         mock_client = MagicMock()
@@ -473,10 +481,16 @@ class TestModelTierSelection:
         assert MODEL_TIER_DEFAULTS[LLMProvider.AZURE][ModelTier.PRECISION] == "gpt-5.2"
 
         # AWS Bedrock
-        assert "claude-opus" in MODEL_TIER_DEFAULTS[LLMProvider.AWS_BEDROCK][ModelTier.PRECISION]
+        assert (
+            "claude-opus"
+            in MODEL_TIER_DEFAULTS[LLMProvider.AWS_BEDROCK][ModelTier.PRECISION]
+        )
 
         # GCP Vertex
-        assert "gemini-3" in MODEL_TIER_DEFAULTS[LLMProvider.GCP_VERTEX][ModelTier.PRECISION]
+        assert (
+            "gemini-3"
+            in MODEL_TIER_DEFAULTS[LLMProvider.GCP_VERTEX][ModelTier.PRECISION]
+        )
 
         # Local
         assert "qwen" in MODEL_TIER_DEFAULTS[LLMProvider.LOCAL][ModelTier.BALANCED]
@@ -492,10 +506,21 @@ class TestModelTierSelection:
         """各プロバイダーのget_effective_modelが正しいモデルを返すこと"""
         # ティア未設定時: プロバイダー固有設定値
         if settings.llm_tier is None:
-            assert settings.get_effective_model(LLMProvider.AZURE) == settings.azure_openai_deployment
-            assert settings.get_effective_model(LLMProvider.AWS_BEDROCK) == settings.aws_bedrock_model_id
-            assert settings.get_effective_model(LLMProvider.GCP_VERTEX) == settings.gcp_vertex_model
-            assert settings.get_effective_model(LLMProvider.LOCAL) == settings.ollama_model
+            assert (
+                settings.get_effective_model(LLMProvider.AZURE)
+                == settings.azure_openai_deployment
+            )
+            assert (
+                settings.get_effective_model(LLMProvider.AWS_BEDROCK)
+                == settings.aws_bedrock_model_id
+            )
+            assert (
+                settings.get_effective_model(LLMProvider.GCP_VERTEX)
+                == settings.gcp_vertex_model
+            )
+            assert (
+                settings.get_effective_model(LLMProvider.LOCAL) == settings.ollama_model
+            )
 
     def test_is_ollama_configured(self):
         """Ollama設定チェックのテスト"""
@@ -513,8 +538,7 @@ class TestOllamaConnectionIntegration:
     """
 
     @pytest.mark.skipif(
-        not settings.is_ollama_configured(),
-        reason="Ollama not configured"
+        not settings.is_ollama_configured(), reason="Ollama not configured"
     )
     @pytest.mark.asyncio
     async def test_ollama_connection(self):
@@ -527,7 +551,10 @@ class TestOllamaConnectionIntegration:
             pytest.skip("Ollama server not running")
 
         messages = [
-            {"role": "user", "content": "Say 'hello' in Japanese. Reply with only the word."}
+            {
+                "role": "user",
+                "content": "Say 'hello' in Japanese. Reply with only the word.",
+            }
         ]
 
         try:

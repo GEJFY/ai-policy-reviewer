@@ -23,4 +23,6 @@ class CheckItem(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     def __repr__(self):
-        return f"<CheckItem(id={self.id}, name='{self.name}', category='{self.category}')>"
+        return (
+            f"<CheckItem(id={self.id}, name='{self.name}', category='{self.category}')>"
+        )

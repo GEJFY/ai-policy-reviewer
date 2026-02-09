@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 # Base OCR Service (ABC)
 # =============================================================================
 
+
 class BaseOCRService(ABC):
     """OCRサービスの基底クラス"""
 
@@ -50,6 +51,7 @@ class BaseOCRService(ABC):
 # Azure Document Intelligence OCR
 # =============================================================================
 
+
 class AzureDocIntelOCRService(BaseOCRService):
     """Azure Document Intelligence を使用したOCRサービス。"""
 
@@ -73,7 +75,9 @@ class AzureDocIntelOCRService(BaseOCRService):
             )
             logger.info("AzureDocIntelOCR initialized (Document Intelligence v1.0)")
         except ImportError:
-            logger.warning("AzureDocIntelOCR: azure-ai-documentintelligence not installed")
+            logger.warning(
+                "AzureDocIntelOCR: azure-ai-documentintelligence not installed"
+            )
         except Exception as e:
             logger.error(f"AzureDocIntelOCR initialization failed: {e}")
 
@@ -136,13 +140,16 @@ class AzureDocIntelOCRService(BaseOCRService):
 
         except Exception as e:
             duration = time.time() - start
-            logger.error(f"AzureDocIntelOCR: failed | {log_ctx} | {duration:.2f}s | {e}")
+            logger.error(
+                f"AzureDocIntelOCR: failed | {log_ctx} | {duration:.2f}s | {e}"
+            )
             raise
 
 
 # =============================================================================
 # Tesseract OCR (Local)
 # =============================================================================
+
 
 class TesseractOCRService(BaseOCRService):
     """ローカルTesseract OCRサービス。pytesseract + pdf2image を使用。"""
@@ -156,6 +163,7 @@ class TesseractOCRService(BaseOCRService):
 
         try:
             import pytesseract
+
             if settings.tesseract_path:
                 pytesseract.pytesseract.tesseract_cmd = settings.tesseract_path
             # バージョン確認でインストール状態をチェック
@@ -222,6 +230,7 @@ class TesseractOCRService(BaseOCRService):
 # =============================================================================
 # AWS Tesseract OCR (Remote REST API)
 # =============================================================================
+
 
 class AWSTesseractOCRService(BaseOCRService):
     """
@@ -297,6 +306,7 @@ class AWSTesseractOCRService(BaseOCRService):
 # =============================================================================
 # OCR Service Factory
 # =============================================================================
+
 
 class OCRServiceFactory:
     """OCRサービスのファクトリ。設定に応じた適切なプロバイダーを返す。"""

@@ -12,15 +12,19 @@ from enum import Enum
 from typing import Callable, Optional, Dict, Any
 from dataclasses import dataclass
 
-from app.core.observability.metrics import CIRCUIT_BREAKER_STATE, CIRCUIT_BREAKER_FAILURES
+from app.core.observability.metrics import (
+    CIRCUIT_BREAKER_STATE,
+    CIRCUIT_BREAKER_FAILURES,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class CircuitState(Enum):
     """サーキットブレーカーの状態"""
-    CLOSED = "closed"      # 正常動作中
-    OPEN = "open"          # 障害検出、リクエスト拒否
+
+    CLOSED = "closed"  # 正常動作中
+    OPEN = "open"  # 障害検出、リクエスト拒否
     HALF_OPEN = "half_open"  # 回復テスト中
 
 
@@ -30,21 +34,25 @@ class CircuitBreakerOpenError(Exception):
     def __init__(self, name: str, retry_after: int):
         self.name = name
         self.retry_after = retry_after
-        super().__init__(f"Circuit breaker '{name}' is open. Retry after {retry_after} seconds.")
+        super().__init__(
+            f"Circuit breaker '{name}' is open. Retry after {retry_after} seconds."
+        )
 
 
 @dataclass
 class CircuitBreakerConfig:
     """サーキットブレーカーの設定"""
-    failure_threshold: int = 5       # 障害しきい値
-    success_threshold: int = 3       # 回復に必要な成功回数
-    recovery_timeout: int = 60       # 回復待機時間（秒）
-    half_open_max_calls: int = 3     # HALF_OPEN状態での最大呼び出し数
+
+    failure_threshold: int = 5  # 障害しきい値
+    success_threshold: int = 3  # 回復に必要な成功回数
+    recovery_timeout: int = 60  # 回復待機時間（秒）
+    half_open_max_calls: int = 3  # HALF_OPEN状態での最大呼び出し数
 
 
 @dataclass
 class CircuitBreakerStats:
     """サーキットブレーカーの統計情報"""
+
     total_calls: int = 0
     successful_calls: int = 0
     failed_calls: int = 0
@@ -170,19 +178,13 @@ class CircuitBreaker:
                     self._success_count = 0
                 else:
                     self._stats.rejected_calls += 1
-                    raise CircuitBreakerOpenError(
-                        self.name,
-                        self._time_until_retry()
-                    )
+                    raise CircuitBreakerOpenError(self.name, self._time_until_retry())
 
             # HALF_OPEN状態での呼び出し制限
             if self._state == CircuitState.HALF_OPEN:
                 if self._half_open_calls >= self.config.half_open_max_calls:
                     self._stats.rejected_calls += 1
-                    raise CircuitBreakerOpenError(
-                        self.name,
-                        self._time_until_retry()
-                    )
+                    raise CircuitBreakerOpenError(self.name, self._time_until_retry())
                 self._half_open_calls += 1
 
         # 関数を実行
@@ -265,7 +267,9 @@ class CircuitBreaker:
                 "rejected_calls": self._stats.rejected_calls,
                 "state_changes": self._stats.state_changes,
             },
-            "time_until_retry": self._time_until_retry() if self._state == CircuitState.OPEN else 0,
+            "time_until_retry": (
+                self._time_until_retry() if self._state == CircuitState.OPEN else 0
+            ),
         }
 
 

@@ -38,7 +38,11 @@ from app.core.resilience.circuit_breaker import (
     gcp_vertex_breaker,
     ollama_breaker,
 )
-from app.core.observability.metrics import LLM_TOKEN_USAGE, LLM_REQUEST_COUNT, LLM_LATENCY
+from app.core.observability.metrics import (
+    LLM_TOKEN_USAGE,
+    LLM_REQUEST_COUNT,
+    LLM_LATENCY,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +57,7 @@ JITTER_FACTOR = 0.1
 @dataclass
 class LLMResponse:
     """LLMレスポンスの標準化されたデータクラス"""
+
     content: str
     model: str
     provider: str
@@ -96,12 +101,15 @@ class AzureOpenAIClient(BaseLLMClient):
 
         try:
             from openai import AzureOpenAI
+
             self.client = AzureOpenAI(
                 azure_endpoint=settings.azure_openai_endpoint,
                 api_key=settings.azure_openai_api_key,
                 api_version="2024-10-21",
             )
-            logger.info(f"Azure OpenAI client initialized | deployment={self.deployment}")
+            logger.info(
+                f"Azure OpenAI client initialized | deployment={self.deployment}"
+            )
         except Exception as e:
             logger.error(f"Failed to initialize Azure OpenAI | error={e}")
 
@@ -157,6 +165,7 @@ class AWSBedrockClient(BaseLLMClient):
 
         try:
             import boto3
+
             self.client = boto3.client(
                 "bedrock-runtime",
                 region_name=settings.aws_region,
@@ -188,10 +197,12 @@ class AWSBedrockClient(BaseLLMClient):
             if msg["role"] == "system":
                 system_message = msg["content"]
             else:
-                chat_messages.append({
-                    "role": msg["role"],
-                    "content": [{"type": "text", "text": msg["content"]}]
-                })
+                chat_messages.append(
+                    {
+                        "role": msg["role"],
+                        "content": [{"type": "text", "text": msg["content"]}],
+                    }
+                )
 
         body = {
             "anthropic_version": "bedrock-2023-05-31",
@@ -219,10 +230,12 @@ class AWSBedrockClient(BaseLLMClient):
             provider="aws_bedrock",
             usage={
                 "prompt_tokens": response_body.get("usage", {}).get("input_tokens", 0),
-                "completion_tokens": response_body.get("usage", {}).get("output_tokens", 0),
+                "completion_tokens": response_body.get("usage", {}).get(
+                    "output_tokens", 0
+                ),
                 "total_tokens": (
-                    response_body.get("usage", {}).get("input_tokens", 0) +
-                    response_body.get("usage", {}).get("output_tokens", 0)
+                    response_body.get("usage", {}).get("input_tokens", 0)
+                    + response_body.get("usage", {}).get("output_tokens", 0)
                 ),
             },
             raw_response=response_body,
@@ -250,7 +263,10 @@ class GCPVertexClient(BaseLLMClient):
             # 認証設定
             if settings.gcp_credentials_path:
                 import os
-                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = settings.gcp_credentials_path
+
+                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = (
+                    settings.gcp_credentials_path
+                )
 
             vertexai.init(
                 project=settings.gcp_project_id,
@@ -304,9 +320,15 @@ class GCPVertexClient(BaseLLMClient):
         )
 
         # トークン使用量を取得
-        usage_metadata = getattr(response, 'usage_metadata', None)
-        prompt_tokens = getattr(usage_metadata, 'prompt_token_count', 0) if usage_metadata else 0
-        completion_tokens = getattr(usage_metadata, 'candidates_token_count', 0) if usage_metadata else 0
+        usage_metadata = getattr(response, "usage_metadata", None)
+        prompt_tokens = (
+            getattr(usage_metadata, "prompt_token_count", 0) if usage_metadata else 0
+        )
+        completion_tokens = (
+            getattr(usage_metadata, "candidates_token_count", 0)
+            if usage_metadata
+            else 0
+        )
 
         return LLMResponse(
             content=response.text,
@@ -343,6 +365,7 @@ class OllamaClient(BaseLLMClient):
 
         try:
             from openai import OpenAI
+
             # OllamaのOpenAI互換エンドポイントを使用
             self.client = OpenAI(
                 base_url=f"{self.base_url}/v1",
@@ -391,9 +414,9 @@ class OllamaClient(BaseLLMClient):
             response = self.client.chat.completions.create(**kwargs)
 
         # トークン使用量の取得（Ollamaは一部のモデルでusageを返さない場合がある）
-        usage = getattr(response, 'usage', None)
-        prompt_tokens = getattr(usage, 'prompt_tokens', 0) if usage else 0
-        completion_tokens = getattr(usage, 'completion_tokens', 0) if usage else 0
+        usage = getattr(response, "usage", None)
+        prompt_tokens = getattr(usage, "prompt_tokens", 0) if usage else 0
+        completion_tokens = getattr(usage, "completion_tokens", 0) if usage else 0
 
         return LLMResponse(
             content=response.choices[0].message.content,
@@ -461,7 +484,9 @@ class UnifiedLLMService:
             )
 
         if self.active_provider:
-            logger.info(f"UnifiedLLMService initialized | active_provider={self.active_provider.value}")
+            logger.info(
+                f"UnifiedLLMService initialized | active_provider={self.active_provider.value}"
+            )
         else:
             logger.warning("UnifiedLLMService: No LLM providers available")
 
@@ -584,7 +609,9 @@ class UnifiedLLMService:
 
         # レイテンシ
         if duration_sec > 0:
-            LLM_LATENCY.labels(provider=provider_name, model=model_name).observe(duration_sec)
+            LLM_LATENCY.labels(provider=provider_name, model=model_name).observe(
+                duration_sec
+            )
 
     async def _call_with_retry(
         self,
@@ -666,7 +693,7 @@ class UnifiedLLMService:
 
     def _calculate_retry_delay(self, attempt: int) -> float:
         """リトライ待機時間を計算"""
-        delay = BASE_DELAY * (2 ** attempt)
+        delay = BASE_DELAY * (2**attempt)
         delay = min(delay, MAX_DELAY)
         jitter = delay * JITTER_FACTOR * (2 * random.random() - 1)
         return max(0.1, delay + jitter)

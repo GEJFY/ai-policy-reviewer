@@ -119,11 +119,14 @@ def require_role(role: str):
         async def admin_endpoint(user: CurrentUser = Depends(require_role("admin"))):
             ...
     """
+
     async def role_checker(
         user: CurrentUser = Depends(get_current_user),
     ) -> CurrentUser:
         if not user.has_role(role):
-            logger.warning(f"Access denied | user_id={user.user_id} | required_role={role}")
+            logger.warning(
+                f"Access denied | user_id={user.user_id} | required_role={role}"
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Role '{role}' required",
@@ -144,6 +147,7 @@ def require_any_role(roles: list[str]):
         ):
             ...
     """
+
     async def role_checker(
         user: CurrentUser = Depends(get_current_user),
     ) -> CurrentUser:

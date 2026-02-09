@@ -166,16 +166,19 @@ APP_INFO = Info(
 
 def set_app_info(version: str, environment: str, llm_provider: str) -> None:
     """アプリケーション情報を設定。"""
-    APP_INFO.info({
-        "version": version,
-        "environment": environment,
-        "llm_provider": llm_provider,
-    })
+    APP_INFO.info(
+        {
+            "version": version,
+            "environment": environment,
+            "llm_provider": llm_provider,
+        }
+    )
 
 
 # =============================================================================
 # メトリクス取得
 # =============================================================================
+
 
 def get_metrics() -> Tuple[bytes, str]:
     """

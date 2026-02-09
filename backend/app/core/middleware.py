@@ -95,7 +95,9 @@ def add_exception_handlers(app: FastAPI) -> None:
     # ============================================================
 
     @app.exception_handler(PolicyReviewerException)
-    async def policy_reviewer_exception_handler(request: Request, exc: PolicyReviewerException):
+    async def policy_reviewer_exception_handler(
+        request: Request, exc: PolicyReviewerException
+    ):
         """アプリケーション固有の例外ハンドラー"""
         request_id = getattr(request.state, "request_id", "unknown")
 
@@ -120,7 +122,9 @@ def add_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AuthenticationError)
     async def authentication_error_handler(request: Request, exc: AuthenticationError):
         request_id = getattr(request.state, "request_id", "unknown")
-        logger.warning(f"AuthenticationError | request_id={request_id} | error={exc.message}")
+        logger.warning(
+            f"AuthenticationError | request_id={request_id} | error={exc.message}"
+        )
         return JSONResponse(
             status_code=401,
             content={
@@ -133,7 +137,9 @@ def add_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AuthorizationError)
     async def authorization_error_handler(request: Request, exc: AuthorizationError):
         request_id = getattr(request.state, "request_id", "unknown")
-        logger.warning(f"AuthorizationError | request_id={request_id} | error={exc.message}")
+        logger.warning(
+            f"AuthorizationError | request_id={request_id} | error={exc.message}"
+        )
         return JSONResponse(
             status_code=403,
             content={
@@ -146,7 +152,9 @@ def add_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ResourceNotFoundError)
     async def resource_not_found_handler(request: Request, exc: ResourceNotFoundError):
         request_id = getattr(request.state, "request_id", "unknown")
-        logger.warning(f"ResourceNotFoundError | request_id={request_id} | error={exc.message}")
+        logger.warning(
+            f"ResourceNotFoundError | request_id={request_id} | error={exc.message}"
+        )
         return JSONResponse(
             status_code=404,
             content={
@@ -160,7 +168,9 @@ def add_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ValidationError)
     async def validation_error_handler(request: Request, exc: ValidationError):
         request_id = getattr(request.state, "request_id", "unknown")
-        logger.warning(f"ValidationError | request_id={request_id} | error={exc.message}")
+        logger.warning(
+            f"ValidationError | request_id={request_id} | error={exc.message}"
+        )
         return JSONResponse(
             status_code=400,
             content={
@@ -172,9 +182,13 @@ def add_exception_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(ServiceUnavailableError)
-    async def service_unavailable_handler(request: Request, exc: ServiceUnavailableError):
+    async def service_unavailable_handler(
+        request: Request, exc: ServiceUnavailableError
+    ):
         request_id = getattr(request.state, "request_id", "unknown")
-        logger.error(f"ServiceUnavailableError | request_id={request_id} | error={exc.message}")
+        logger.error(
+            f"ServiceUnavailableError | request_id={request_id} | error={exc.message}"
+        )
         return JSONResponse(
             status_code=503,
             content={
@@ -188,7 +202,9 @@ def add_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(RateLimitExceededError)
     async def rate_limit_handler(request: Request, exc: RateLimitExceededError):
         request_id = getattr(request.state, "request_id", "unknown")
-        logger.warning(f"RateLimitExceededError | request_id={request_id} | error={exc.message}")
+        logger.warning(
+            f"RateLimitExceededError | request_id={request_id} | error={exc.message}"
+        )
 
         headers = {}
         if "retry_after" in exc.details:
@@ -212,9 +228,7 @@ def add_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ValueError)
     async def value_error_handler(request: Request, exc: ValueError):
         request_id = getattr(request.state, "request_id", "unknown")
-        logger.warning(
-            f"ValueError | request_id={request_id} | error={str(exc)}"
-        )
+        logger.warning(f"ValueError | request_id={request_id} | error={str(exc)}")
         return JSONResponse(
             status_code=400,
             content={
@@ -242,9 +256,7 @@ def add_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(PermissionError)
     async def permission_error_handler(request: Request, exc: PermissionError):
         request_id = getattr(request.state, "request_id", "unknown")
-        logger.error(
-            f"PermissionError | request_id={request_id} | error={str(exc)}"
-        )
+        logger.error(f"PermissionError | request_id={request_id} | error={str(exc)}")
         return JSONResponse(
             status_code=403,
             content={

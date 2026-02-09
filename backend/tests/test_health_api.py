@@ -31,7 +31,10 @@ class TestHealthAPI:
         response = client.get("/docs")
 
         assert response.status_code == 200
-        assert "swagger" in response.text.lower() or "text/html" in response.headers.get("content-type", "")
+        assert (
+            "swagger" in response.text.lower()
+            or "text/html" in response.headers.get("content-type", "")
+        )
 
     def test_openapi_schema_available(self, client: TestClient):
         """OpenAPIスキーマが利用可能。"""

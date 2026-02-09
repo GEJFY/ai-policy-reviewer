@@ -23,28 +23,27 @@ class TestValidationErrors:
     def test_create_term_invalid_type(self, client: TestClient):
         """用語作成：型エラー。"""
         # aliases は list であるべき
-        response = client.post("/api/v1/terms", json={
-            "term": "テスト",
-            "definition": "テスト",
-            "category": "一般",
-            "aliases": "not_a_list"  # リストであるべき
-        })
+        response = client.post(
+            "/api/v1/terms",
+            json={
+                "term": "テスト",
+                "definition": "テスト",
+                "category": "一般",
+                "aliases": "not_a_list",  # リストであるべき
+            },
+        )
         assert response.status_code == 422
 
     def test_create_check_item_missing_required_field(self, client: TestClient):
         """チェック項目作成：必須フィールド欠落。"""
         # nameフィールドなし
-        response = client.post("/api/v1/check-items", json={
-            "category": "TERMINOLOGY"
-        })
+        response = client.post("/api/v1/check-items", json={"category": "TERMINOLOGY"})
         assert response.status_code == 422
 
     def test_create_writing_rule_missing_required_field(self, client: TestClient):
         """記載ルール作成：必須フィールド欠落。"""
         # nameフィールドなし（rule_type, correct_formも必須）
-        response = client.post("/api/v1/writing-rules", json={
-            "rule_type": "STYLE"
-        })
+        response = client.post("/api/v1/writing-rules", json={"rule_type": "STYLE"})
         assert response.status_code == 422
 
     def test_pagination_invalid_values(self, client: TestClient):
@@ -109,14 +108,17 @@ class TestInvalidOperations:
         """無効なHTTPメソッド。"""
         # POSTのみのエンドポイントにPUT - FastAPIはバリデーションエラーを返す場合もある
         response = client.put("/api/v1/terms/search", json={"query": "test"})
-        assert response.status_code in [405, 422]  # Method Not Allowed or Validation Error
+        assert response.status_code in [
+            405,
+            422,
+        ]  # Method Not Allowed or Validation Error
 
     def test_invalid_content_type(self, client: TestClient):
         """無効なContent-Type。"""
         response = client.post(
             "/api/v1/terms",
             content="term=test&definition=test",  # JSON以外
-            headers={"Content-Type": "application/x-www-form-urlencoded"}
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
         assert response.status_code == 422
 
@@ -127,11 +129,10 @@ class TestInvalidOperations:
 
     def test_null_required_field(self, client: TestClient):
         """必須フィールドがnull。"""
-        response = client.post("/api/v1/terms", json={
-            "term": None,
-            "definition": "テスト",
-            "category": "一般"
-        })
+        response = client.post(
+            "/api/v1/terms",
+            json={"term": None, "definition": "テスト", "category": "一般"},
+        )
         assert response.status_code == 422
 
 
@@ -141,21 +142,23 @@ class TestEdgeCases:
     def test_very_long_term(self, client: TestClient):
         """非常に長い用語名。"""
         long_term = "あ" * 1000
-        response = client.post("/api/v1/terms", json={
-            "term": long_term,
-            "definition": "テスト",
-            "category": "一般"
-        })
+        response = client.post(
+            "/api/v1/terms",
+            json={"term": long_term, "definition": "テスト", "category": "一般"},
+        )
         # 255文字制限があるのでバリデーションエラー
         assert response.status_code == 422
 
     def test_special_characters_in_term(self, client: TestClient):
         """特殊文字を含む用語。"""
-        response = client.post("/api/v1/terms", json={
-            "term": "テスト<script>alert('xss')</script>",
-            "definition": "テスト用の定義",
-            "category": "一般"
-        })
+        response = client.post(
+            "/api/v1/terms",
+            json={
+                "term": "テスト<script>alert('xss')</script>",
+                "definition": "テスト用の定義",
+                "category": "一般",
+            },
+        )
         # 特殊文字を含むがDBに保存される（出力時にエスケープ）
         assert response.status_code == 201
         data = response.json()
@@ -163,40 +166,37 @@ class TestEdgeCases:
 
     def test_unicode_in_term(self, client: TestClient):
         """各種Unicode文字。"""
-        response = client.post("/api/v1/terms", json={
-            "term": "従業員👨‍💼",  # 絵文字
-            "definition": "日本語と絵文字のテスト",
-            "category": "一般"
-        })
+        response = client.post(
+            "/api/v1/terms",
+            json={
+                "term": "従業員👨‍💼",  # 絵文字
+                "definition": "日本語と絵文字のテスト",
+                "category": "一般",
+            },
+        )
         assert response.status_code == 201
 
     def test_empty_string_fields(self, client: TestClient):
         """空文字列のフィールド。"""
-        response = client.post("/api/v1/terms", json={
-            "term": "",
-            "definition": "テスト",
-            "category": "一般"
-        })
+        response = client.post(
+            "/api/v1/terms",
+            json={"term": "", "definition": "テスト", "category": "一般"},
+        )
         # 空文字列はmin_length=1に違反
         assert response.status_code == 422
 
     def test_whitespace_only_fields(self, client: TestClient):
         """空白のみのフィールド。"""
-        response = client.post("/api/v1/terms", json={
-            "term": "   ",
-            "definition": "テスト",
-            "category": "一般"
-        })
+        response = client.post(
+            "/api/v1/terms",
+            json={"term": "   ", "definition": "テスト", "category": "一般"},
+        )
         # 空白のみでも許可される場合がある
         assert response.status_code in [201, 422]
 
     def test_concurrent_same_term_creation(self, client: TestClient):
         """同一用語の同時作成試行。"""
-        term_data = {
-            "term": "重複テスト",
-            "definition": "テスト",
-            "category": "一般"
-        }
+        term_data = {"term": "重複テスト", "definition": "テスト", "category": "一般"}
 
         # 1回目
         response1 = client.post("/api/v1/terms", json=term_data)
@@ -213,19 +213,17 @@ class TestReviewErrors:
 
     def test_create_review_document_not_found(self, client: TestClient):
         """レビュー作成：文書が存在しない。"""
-        response = client.post("/api/v1/reviews", json={
-            "document_id": 99999,
-            "check_item_ids": [1, 2, 3]
-        })
+        response = client.post(
+            "/api/v1/reviews", json={"document_id": 99999, "check_item_ids": [1, 2, 3]}
+        )
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
     def test_create_review_empty_check_items(self, client: TestClient):
         """レビュー作成：チェック項目が空。"""
-        response = client.post("/api/v1/reviews", json={
-            "document_id": 1,
-            "check_item_ids": []
-        })
+        response = client.post(
+            "/api/v1/reviews", json={"document_id": 1, "check_item_ids": []}
+        )
         # 空リストでも文書が見つからないエラーになる
         assert response.status_code in [400, 404, 422]
 

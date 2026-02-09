@@ -15,20 +15,15 @@ logger = logging.getLogger(__name__)
 DEFAULT_SECURITY_HEADERS: Dict[str, str] = {
     # XSS保護
     "X-XSS-Protection": "1; mode=block",
-
     # コンテンツタイプのスニッフィングを防止
     "X-Content-Type-Options": "nosniff",
-
     # クリックジャッキング防止
     "X-Frame-Options": "DENY",
-
     # Referrer情報の制限
     "Referrer-Policy": "strict-origin-when-cross-origin",
-
     # キャッシュ制御（API向け）
     "Cache-Control": "no-store, no-cache, must-revalidate",
     "Pragma": "no-cache",
-
     # 権限ポリシー（不要な機能を無効化）
     "Permissions-Policy": "geolocation=(), microphone=(), camera=()",
 }
@@ -37,7 +32,6 @@ DEFAULT_SECURITY_HEADERS: Dict[str, str] = {
 PRODUCTION_HEADERS: Dict[str, str] = {
     # HTTPS強制
     "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
-
     # CSP（Content Security Policy）
     "Content-Security-Policy": (
         "default-src 'self'; "
@@ -81,7 +75,9 @@ class SecurityHeadersMiddleware:
             headers_dict.update(PRODUCTION_HEADERS)
             logger.info("Security headers configured for production mode")
         else:
-            logger.info("Security headers configured for development mode (no HSTS/CSP)")
+            logger.info(
+                "Security headers configured for development mode (no HSTS/CSP)"
+            )
 
         # バイト形式に変換
         return [(k.lower().encode(), v.encode()) for k, v in headers_dict.items()]

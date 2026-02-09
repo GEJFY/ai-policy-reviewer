@@ -83,7 +83,9 @@ class AuditLogger:
     コンプライアンス要件を満たすための詳細な追跡情報を提供。
     """
 
-    def __init__(self, log_dir: str = "logs", max_bytes: int = 50_000_000, backup_count: int = 10):
+    def __init__(
+        self, log_dir: str = "logs", max_bytes: int = 50_000_000, backup_count: int = 10
+    ):
         """
         監査ロガーを初期化。
 

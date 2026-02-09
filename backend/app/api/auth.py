@@ -23,14 +23,17 @@ router = APIRouter(prefix="/api/v1/auth", tags=["Authentication"])
 # Request / Response Models
 # =============================================================================
 
+
 class LoginRequest(BaseModel):
     """ログインリクエスト"""
+
     username: str = Field(..., min_length=1, max_length=100)
     password: str = Field(..., min_length=1)
 
 
 class RegisterRequest(BaseModel):
     """ユーザー登録リクエスト"""
+
     username: str = Field(..., min_length=3, max_length=50, pattern=r"^[a-zA-Z0-9_-]+$")
     password: str = Field(..., min_length=8, max_length=128)
     display_name: str = Field(..., min_length=1, max_length=100)
@@ -39,11 +42,13 @@ class RegisterRequest(BaseModel):
 
 class RefreshRequest(BaseModel):
     """トークンリフレッシュリクエスト"""
+
     refresh_token: str
 
 
 class TokenResponse(BaseModel):
     """トークンレスポンス"""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
@@ -52,6 +57,7 @@ class TokenResponse(BaseModel):
 
 class UserResponse(BaseModel):
     """ユーザー情報レスポンス"""
+
     user_id: str
     username: str
     display_name: str
@@ -60,6 +66,7 @@ class UserResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     """メッセージレスポンス"""
+
     message: str
 
 
@@ -67,11 +74,13 @@ class MessageResponse(BaseModel):
 # In-memory User Store（本番ではDB/LDAPに置き換え）
 # =============================================================================
 
+
 # デモ/開発用のインメモリユーザーストア
 # 初回起動時にパスワードハッシュを生成
 def _init_users() -> dict[str, dict]:
     """デモユーザーを初期化"""
     from passlib.context import CryptContext
+
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     default_hash = pwd_context.hash("admin123")
     return {
@@ -91,6 +100,7 @@ def _init_users() -> dict[str, dict]:
         },
     }
 
+
 _users: dict[str, dict] = _init_users()
 
 _next_user_id = 100
@@ -99,6 +109,7 @@ _next_user_id = 100
 def _verify_password(plain_password: str, hashed_password: str) -> bool:
     """パスワードを検証"""
     from passlib.context import CryptContext
+
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -106,6 +117,7 @@ def _verify_password(plain_password: str, hashed_password: str) -> bool:
 def _hash_password(password: str) -> str:
     """パスワードをハッシュ化"""
     from passlib.context import CryptContext
+
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     return pwd_context.hash(password)
 
@@ -113,6 +125,7 @@ def _hash_password(password: str) -> str:
 # =============================================================================
 # Endpoints
 # =============================================================================
+
 
 @router.post("/login", response_model=TokenResponse)
 async def login(request: LoginRequest):
@@ -151,7 +164,9 @@ async def login(request: LoginRequest):
         resource_id=request.username,
     )
 
-    logger.info(f"User logged in | user_id={user['user_id']} | username={request.username}")
+    logger.info(
+        f"User logged in | user_id={user['user_id']} | username={request.username}"
+    )
 
     return TokenResponse(
         access_token=token_pair.access_token,
@@ -161,7 +176,9 @@ async def login(request: LoginRequest):
     )
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
+)
 async def register(request: RegisterRequest):
     """
     新規ユーザー登録。

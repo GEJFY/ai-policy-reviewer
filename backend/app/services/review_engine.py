@@ -126,7 +126,9 @@ class ReviewEngine:
                     logger.error(f"Document has no content | document_id={document.id}")
                     raise ValueError("Document has no content")
 
-            logger.debug(f"Processing document | chunks={len(chunks)} | total_chars={sum(len(c) for c in chunks)}")
+            logger.debug(
+                f"Processing document | chunks={len(chunks)} | total_chars={sum(len(c) for c in chunks)}"
+            )
 
             # Process each check item
             for idx, check_item_id in enumerate(check_item_ids):
@@ -144,7 +146,9 @@ class ReviewEngine:
                     db.commit()
 
                 check_start = time.time()
-                logger.debug(f"Processing check item | check_item_id={check_item_id} | progress={idx + 1}/{len(check_item_ids)}")
+                logger.debug(
+                    f"Processing check item | check_item_id={check_item_id} | progress={idx + 1}/{len(check_item_ids)}"
+                )
 
                 try:
                     # Execute review for this check item
@@ -179,7 +183,7 @@ class ReviewEngine:
                 except Exception as e:
                     logger.error(
                         f"Check item failed | check_item_id={check_item_id} | error={str(e)}",
-                        exc_info=True
+                        exc_info=True,
                     )
                     if review_check:
                         review_check.status = "failed"
@@ -202,8 +206,7 @@ class ReviewEngine:
             review.status = "failed"
             db.commit()
             logger.error(
-                f"Review failed | review_id={review_id} | error={str(e)}",
-                exc_info=True
+                f"Review failed | review_id={review_id} | error={str(e)}", exc_info=True
             )
             raise e
 
@@ -222,7 +225,9 @@ class ReviewEngine:
         if not check_item:
             raise ValueError(f"Check item {check_item_id} not found")
 
-        logger.debug(f"Executing check | name={check_item.name} | category={check_item.category}")
+        logger.debug(
+            f"Executing check | name={check_item.name} | category={check_item.category}"
+        )
 
         # Get relevant terms using vector search
         terms = await self._get_relevant_terms(db, check_item.name)
@@ -337,9 +342,7 @@ class ReviewEngine:
             logger.warning(f"Vector search failed, using fallback | error={str(e)}")
             return db.query(Term).limit(top_k).all()
 
-    def _get_writing_rules(
-        self, db: Session, category: str
-    ) -> list[WritingRule]:
+    def _get_writing_rules(self, db: Session, category: str) -> list[WritingRule]:
         """Get writing rules for a category."""
         return (
             db.query(WritingRule)
@@ -385,7 +388,9 @@ class ReviewEngine:
             if skipped > 0:
                 logger.debug(f"Skipped invalid findings | count={skipped}")
 
-            logger.debug(f"Parsed findings | total={len(findings)} | valid={len(normalized)}")
+            logger.debug(
+                f"Parsed findings | total={len(findings)} | valid={len(normalized)}"
+            )
             return normalized
 
         except json.JSONDecodeError as e:

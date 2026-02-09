@@ -15,6 +15,7 @@ from pydantic_settings import BaseSettings
 
 class LLMProvider(str, Enum):
     """LLMプロバイダーの種類"""
+
     AZURE = "azure"
     AWS_BEDROCK = "aws_bedrock"
     GCP_VERTEX = "gcp_vertex"
@@ -23,13 +24,15 @@ class LLMProvider(str, Enum):
 
 class ModelTier(str, Enum):
     """モデルのティア（精度・コストのバランス）"""
-    PRECISION = "precision"           # 最高精度、高コスト
-    BALANCED = "balanced"             # バランス型
+
+    PRECISION = "precision"  # 最高精度、高コスト
+    BALANCED = "balanced"  # バランス型
     COST_EFFECTIVE = "cost_effective"  # コスト重視
 
 
 class OCRProvider(str, Enum):
     """OCRプロバイダーの種類"""
+
     AZURE_DOC_INTEL = "azure_doc_intel"
     TESSERACT = "tesseract"
     AWS_TESSERACT = "aws_tesseract"
@@ -37,6 +40,7 @@ class OCRProvider(str, Enum):
 
 class LLMModel(str, Enum):
     """利用可能なLLMモデル（2026年2月時点）"""
+
     # === Azure AI Foundry Models ===
     # Precision
     GPT_5_2 = "gpt-5.2"
@@ -107,6 +111,7 @@ MODEL_TIER_DEFAULTS: dict[LLMProvider, dict[ModelTier, str]] = {
 
 class ConfigStatus(NamedTuple):
     """設定の検証結果を表す。"""
+
     is_valid: bool
     missing: list[str]
     warnings: list[str]
@@ -215,7 +220,9 @@ class Settings(BaseSettings):
 
         # セキュリティ警告
         if self.secret_key == "dev-secret-key" and not self.debug:
-            warnings.append("SECRET_KEY - 本番環境ではデフォルト値を使用しないでください")
+            warnings.append(
+                "SECRET_KEY - 本番環境ではデフォルト値を使用しないでください"
+            )
 
         is_valid = len(missing) == 0
         return ConfigStatus(is_valid=is_valid, missing=missing, warnings=warnings)
@@ -248,6 +255,7 @@ class Settings(BaseSettings):
         """ローカルTesseractが利用可能かチェック（実行ファイルの存在を検証）。"""
         import os
         import shutil
+
         # 明示パス指定時: 実行ファイルが存在するか検証
         if self.tesseract_path:
             return os.path.isfile(self.tesseract_path)
@@ -312,12 +320,8 @@ def validate_and_log_config(logger: logging.Logger) -> bool:
     status = settings.validate_config()
 
     if status.missing:
-        logger.error(
-            f"Required configuration missing: {', '.join(status.missing)}"
-        )
-        logger.error(
-            "Please set the required environment variables in .env file"
-        )
+        logger.error(f"Required configuration missing: {', '.join(status.missing)}")
+        logger.error("Please set the required environment variables in .env file")
 
     if status.warnings:
         for warning in status.warnings:

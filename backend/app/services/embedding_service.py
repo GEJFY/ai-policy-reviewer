@@ -33,7 +33,9 @@ class EmbeddingService:
             )
             logger.info(f"EmbeddingService initialized | deployment={self.deployment}")
         else:
-            logger.warning("EmbeddingService not configured - missing Azure credentials")
+            logger.warning(
+                "EmbeddingService not configured - missing Azure credentials"
+            )
 
     def is_available(self) -> bool:
         """Check if embedding service is available."""

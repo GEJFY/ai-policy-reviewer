@@ -16,7 +16,8 @@ from unittest.mock import MagicMock, patch, AsyncMock
 
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from app.config import settings, OCRProvider
 from app.services.ocr_service import (
@@ -32,6 +33,7 @@ from app.services.ocr_service import (
 # =============================================================================
 # OCR Provider Enum Tests
 # =============================================================================
+
 
 class TestOCRProviderEnum:
     """OCRProviderのenum値テスト"""
@@ -53,6 +55,7 @@ class TestOCRProviderEnum:
 # =============================================================================
 # OCR Service Factory Tests
 # =============================================================================
+
 
 class TestOCRServiceFactory:
     """OCRServiceFactoryのテスト"""
@@ -97,6 +100,7 @@ class TestOCRServiceFactory:
 # Azure Document Intelligence OCR Tests
 # =============================================================================
 
+
 class TestAzureDocIntelOCRService:
     """Azure Document Intelligence OCRのテスト"""
 
@@ -115,6 +119,7 @@ class TestAzureDocIntelOCRService:
 # =============================================================================
 # Tesseract OCR Tests
 # =============================================================================
+
 
 class TestTesseractOCRService:
     """Tesseract OCRのテスト"""
@@ -138,9 +143,9 @@ class TestTesseractOCRService:
 
         mock_images = [MagicMock(), MagicMock()]
 
-        with patch('pytesseract.image_to_string') as mock_img_to_str, \
-             patch('pytesseract.pytesseract'), \
-             patch('pdf2image.convert_from_bytes') as mock_convert:
+        with patch("pytesseract.image_to_string") as mock_img_to_str, patch(
+            "pytesseract.pytesseract"
+        ), patch("pdf2image.convert_from_bytes") as mock_convert:
 
             mock_convert.return_value = mock_images
             mock_img_to_str.side_effect = ["ページ1のテキスト", "ページ2のテキスト"]
@@ -155,6 +160,7 @@ class TestTesseractOCRService:
 # =============================================================================
 # AWS Tesseract OCR Tests
 # =============================================================================
+
 
 class TestAWSTesseractOCRService:
     """AWS Tesseract OCRのテスト"""
@@ -189,7 +195,7 @@ class TestAWSTesseractOCRService:
         }
         mock_response.raise_for_status = MagicMock()
 
-        with patch('httpx.AsyncClient') as mock_client_class:
+        with patch("httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
             mock_client.post.return_value = mock_response
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -206,6 +212,7 @@ class TestAWSTesseractOCRService:
 # OCR Integration Tests (Tesseract)
 # =============================================================================
 
+
 class TestTesseractIntegration:
     """
     Tesseract OCR統合テスト
@@ -221,10 +228,12 @@ class TestTesseractIntegration:
     def _is_tesseract_available(self):
         try:
             import pytesseract
+
             if settings.tesseract_path:
                 pytesseract.pytesseract.tesseract_cmd = settings.tesseract_path
             else:
                 import os
+
                 for path in self._TESSERACT_PATHS:
                     if os.path.exists(path):
                         pytesseract.pytesseract.tesseract_cmd = path
@@ -240,6 +249,7 @@ class TestTesseractIntegration:
             pytest.skip("Tesseract not installed")
 
         import pytesseract
+
         version = pytesseract.get_tesseract_version()
         assert version is not None
         print(f"Tesseract version: {version}")

@@ -26,7 +26,15 @@ API endpoints for Document management.
 
 import os
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Query
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    UploadFile,
+    File,
+    BackgroundTasks,
+    Query,
+)
 from sqlalchemy.orm import Session
 from typing import Optional
 
@@ -275,11 +283,17 @@ async def process_document_ocr(document_id: int):
         try:
             # Extract text
             if ocr_service.is_available():
-                logger.info(f"Using {ocr_service.provider_name()} for OCR: document_id={document_id}")
-                extracted_text = await ocr_service.extract_text_from_pdf(document.file_path)
+                logger.info(
+                    f"Using {ocr_service.provider_name()} for OCR: document_id={document_id}"
+                )
+                extracted_text = await ocr_service.extract_text_from_pdf(
+                    document.file_path
+                )
             else:
                 # Fallback: try basic text extraction
-                logger.info(f"Using PyPDF2 fallback for text extraction: document_id={document_id}")
+                logger.info(
+                    f"Using PyPDF2 fallback for text extraction: document_id={document_id}"
+                )
                 import PyPDF2
 
                 with open(document.file_path, "rb") as f:
@@ -288,11 +302,15 @@ async def process_document_ocr(document_id: int):
                     extracted_text = "\n\n".join(pages)
 
             document.extracted_text = extracted_text
-            logger.info(f"Text extracted: document_id={document_id}, length={len(extracted_text)}")
+            logger.info(
+                f"Text extracted: document_id={document_id}, length={len(extracted_text)}"
+            )
 
             # Chunk the text
             chunks = chunking_service.chunk_text(extracted_text)
-            logger.info(f"Text chunked: document_id={document_id}, chunks={len(chunks)}")
+            logger.info(
+                f"Text chunked: document_id={document_id}, chunks={len(chunks)}"
+            )
 
             # Delete existing chunks
             db.query(DocumentChunk).filter(
@@ -305,9 +323,13 @@ async def process_document_ocr(document_id: int):
                 if embedding_service.is_available():
                     try:
                         embedding = await embedding_service.get_embedding(chunk_text)
-                        embedding_bytes = embedding_service.embedding_to_bytes(embedding)
+                        embedding_bytes = embedding_service.embedding_to_bytes(
+                            embedding
+                        )
                     except Exception as e:
-                        logger.warning(f"Failed to generate chunk embedding: chunk={i}, error={e}")
+                        logger.warning(
+                            f"Failed to generate chunk embedding: chunk={i}, error={e}"
+                        )
 
                 chunk = DocumentChunk(
                     document_id=document_id,
@@ -322,7 +344,10 @@ async def process_document_ocr(document_id: int):
             logger.info(f"OCR processing completed: document_id={document_id}")
 
         except Exception as e:
-            logger.error(f"OCR processing failed: document_id={document_id}, error={e}", exc_info=True)
+            logger.error(
+                f"OCR processing failed: document_id={document_id}, error={e}",
+                exc_info=True,
+            )
             document.ocr_status = "failed"
             db.commit()
 

@@ -42,8 +42,14 @@ class PromptBuilder:
 
         # Build context strings
         terms_context = self._format_terms(terms) if terms else "（用語辞書なし）"
-        rules_context = self._format_rules(writing_rules) if writing_rules else "（記載ルールなし）"
-        related_context = self._format_related_docs(related_docs) if related_docs else "（関連規程なし）"
+        rules_context = (
+            self._format_rules(writing_rules) if writing_rules else "（記載ルールなし）"
+        )
+        related_context = (
+            self._format_related_docs(related_docs)
+            if related_docs
+            else "（関連規程なし）"
+        )
         doc_content = "\n\n---\n\n".join(document_chunks)
 
         # Fill template
@@ -81,11 +87,19 @@ class PromptBuilder:
 
         lines = ["| 正式用語 | 別名 | 定義 |", "|---|---|---|"]
         for term in terms:
-            aliases = term.aliases if isinstance(term.aliases, str) else ", ".join(term.aliases or [])
+            aliases = (
+                term.aliases
+                if isinstance(term.aliases, str)
+                else ", ".join(term.aliases or [])
+            )
             if not aliases:
                 aliases = "-"
             # Truncate long definitions
-            definition = term.definition[:100] + "..." if len(term.definition) > 100 else term.definition
+            definition = (
+                term.definition[:100] + "..."
+                if len(term.definition) > 100
+                else term.definition
+            )
             lines.append(f"| {term.term} | {aliases} | {definition} |")
 
         return "\n".join(lines)

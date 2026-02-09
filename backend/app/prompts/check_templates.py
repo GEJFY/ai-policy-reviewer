@@ -56,8 +56,8 @@ CHECK_TEMPLATES = {
 - 用語辞書と照合し、不統一な用語を全て検出してください
 - 各指摘には「何が正しい表記か」を明示してください
 - 重要度：表記ゆれは MEDIUM、略称の過度な使用は LOW
-""" + OUTPUT_REMINDER,
-
+"""
+    + OUTPUT_REMINDER,
     "GRAMMAR": """# 曖昧表現チェック
 
 ## 目的
@@ -91,8 +91,8 @@ CHECK_TEMPLATES = {
 - 上記パターンに該当する曖昧表現を全て抽出
 - 各表現が「なぜ曖昧か」を具体的に説明
 - 改善案は具体的な修正後文言を示す
-""" + OUTPUT_REMINDER,
-
+"""
+    + OUTPUT_REMINDER,
     "STRUCTURE": """# 責任主体明確化チェック
 
 ## 目的
@@ -133,8 +133,8 @@ CHECK_TEMPLATES = {
 - 5W1Hの観点から各条項を精査
 - 特に「誰が」「いつまでに」が不明確な箇所を重点的に指摘
 - 改善案では具体的な責任者・期限を例示
-""" + OUTPUT_REMINDER,
-
+"""
+    + OUTPUT_REMINDER,
     "COMPLIANCE": """# 法令参照チェック
 
 ## 目的
@@ -167,8 +167,8 @@ CHECK_TEMPLATES = {
 - 法令名・条文番号の正確性を確認
 - 法改正の影響がありそうな箇所は「要法務確認」と注記
 - 引用形式の統一について提案
-""" + OUTPUT_REMINDER,
-
+"""
+    + OUTPUT_REMINDER,
     "CONSISTENCY": """# 他規程参照チェック
 
 ## 目的
@@ -199,8 +199,8 @@ CHECK_TEMPLATES = {
 - 他規程を参照している箇所を全て抽出
 - 参照先との整合性を確認
 - 「別途定める」「関連規程参照」の具体化を提案
-""" + OUTPUT_REMINDER,
-
+"""
+    + OUTPUT_REMINDER,
     "SECURITY": """# セキュリティ要件チェック
 
 ## 目的
@@ -238,8 +238,8 @@ CHECK_TEMPLATES = {
 - セキュリティに関する記載を全て精査
 - 上記7要素のうち欠けている・不十分な要素を指摘
 - 具体的な改善案（追記すべき内容）を提示
-""" + OUTPUT_REMINDER,
-
+"""
+    + OUTPUT_REMINDER,
     "OPERATIONAL": """# 実務適合性チェック
 
 ## 目的
@@ -281,11 +281,13 @@ CHECK_TEMPLATES = {
 - 実務担当者の視点で規程を評価
 - 「規程どおり」に運用する場合の困難点を指摘
 - 実行可能な代替案を提示
-""" + OUTPUT_REMINDER,
+"""
+    + OUTPUT_REMINDER,
 }
 
 # Default template for unknown categories
-DEFAULT_TEMPLATE = """# 一般レビュー
+DEFAULT_TEMPLATE = (
+    """# 一般レビュー
 
 ## レビュー対象文書
 {document_content}
@@ -296,4 +298,6 @@ DEFAULT_TEMPLATE = """# 一般レビュー
 ## 指示
 上記のチェック項目に基づいて文書をレビューし、問題点を指摘してください。
 各指摘には、該当箇所・問題内容・改善提案を含めてください。
-""" + OUTPUT_REMINDER
+"""
+    + OUTPUT_REMINDER
+)

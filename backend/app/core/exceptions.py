@@ -35,14 +35,20 @@ class PolicyReviewerException(Exception):
 class AuthenticationError(PolicyReviewerException):
     """認証エラー"""
 
-    def __init__(self, message: str = "認証に失敗しました", details: Optional[Dict] = None):
+    def __init__(
+        self, message: str = "認証に失敗しました", details: Optional[Dict] = None
+    ):
         super().__init__(message, "AUTHENTICATION_ERROR", details)
 
 
 class AuthorizationError(PolicyReviewerException):
     """認可エラー"""
 
-    def __init__(self, message: str = "この操作を実行する権限がありません", details: Optional[Dict] = None):
+    def __init__(
+        self,
+        message: str = "この操作を実行する権限がありません",
+        details: Optional[Dict] = None,
+    ):
         super().__init__(message, "AUTHORIZATION_ERROR", details)
 
 
@@ -85,7 +91,12 @@ class ResourceConflictError(PolicyReviewerException):
 class DocumentProcessingError(PolicyReviewerException):
     """文書処理エラー"""
 
-    def __init__(self, message: str, document_id: Optional[int] = None, details: Optional[Dict] = None):
+    def __init__(
+        self,
+        message: str,
+        document_id: Optional[int] = None,
+        details: Optional[Dict] = None,
+    ):
         details = details or {}
         if document_id:
             details["document_id"] = document_id
@@ -95,7 +106,12 @@ class DocumentProcessingError(PolicyReviewerException):
 class OCRError(DocumentProcessingError):
     """OCR処理エラー"""
 
-    def __init__(self, message: str = "OCR処理に失敗しました", document_id: Optional[int] = None, details: Optional[Dict] = None):
+    def __init__(
+        self,
+        message: str = "OCR処理に失敗しました",
+        document_id: Optional[int] = None,
+        details: Optional[Dict] = None,
+    ):
         super().__init__(message, document_id, details)
         self.error_code = "OCR_ERROR"
 
@@ -130,7 +146,12 @@ class FileTooLargeError(DocumentProcessingError):
 class ReviewError(PolicyReviewerException):
     """レビュー処理エラー"""
 
-    def __init__(self, message: str, review_id: Optional[int] = None, details: Optional[Dict] = None):
+    def __init__(
+        self,
+        message: str,
+        review_id: Optional[int] = None,
+        details: Optional[Dict] = None,
+    ):
         details = details or {}
         if review_id:
             details["review_id"] = review_id
@@ -218,7 +239,9 @@ class RateLimitExceededError(ExternalServiceError):
 class ValidationError(PolicyReviewerException):
     """入力値検証エラー"""
 
-    def __init__(self, message: str, field: Optional[str] = None, details: Optional[Dict] = None):
+    def __init__(
+        self, message: str, field: Optional[str] = None, details: Optional[Dict] = None
+    ):
         details = details or {}
         if field:
             details["field"] = field
@@ -250,7 +273,11 @@ class MissingRequiredFieldError(ValidationError):
 class DatabaseError(PolicyReviewerException):
     """データベースエラー"""
 
-    def __init__(self, message: str = "データベースエラーが発生しました", details: Optional[Dict] = None):
+    def __init__(
+        self,
+        message: str = "データベースエラーが発生しました",
+        details: Optional[Dict] = None,
+    ):
         super().__init__(message, "DATABASE_ERROR", details)
 
 
