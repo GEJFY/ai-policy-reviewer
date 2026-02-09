@@ -467,7 +467,9 @@ class WritingRule(BaseModel):
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
 │              4. LLM呼び出し                                   │
-│  - Model: GPT-4o                                              │
+│  - Provider: Azure / AWS Bedrock / GCP Vertex / Ollama        │
+│  - Model: プロバイダー・ティア設定に応じて自動選択             │
+│    例: GPT-5.2, Claude Sonnet 4.5, Gemini 3 Flash等          │
 │  - Temperature: 0.3（一貫性重視）                             │
 │  - Max Tokens: 4000                                           │
 │  - Response Format: JSON                                      │

@@ -11,8 +11,8 @@
 ## 環境準備
 
 ### 必要条件
-- Docker Desktop が起動していること
-- Azure OpenAI のAPIキーが設定されていること
+- Docker Desktop が起動していること（Docker使用時）、または Python 3.11+ / Node.js 20+ がインストール済み
+- LLMプロバイダーのいずれかが設定されていること（Azure / AWS Bedrock / GCP Vertex AI / Ollama）
 - ポート 3030（フロントエンド）、8080（バックエンド）が空いていること
 
 ### 起動手順
@@ -23,7 +23,7 @@ cd ai-policy-reviewer
 
 # 2. 環境変数の設定（初回のみ）
 cp .env.example .env
-# .env ファイルを編集してAzure OpenAI の情報を設定
+# .env ファイルを編集してLLMプロバイダーの認証情報を設定
 
 # 3. サービス起動
 docker-compose up -d
@@ -109,8 +109,8 @@ python backend/scripts/seed_demo_data.py
 4. アップロード完了を確認
 
 **デモポイント**:
-> 「PDFをアップロードすると、Azure Document Intelligence による
-> OCR処理が自動実行され、テキストが抽出されます」
+> 「PDFをアップロードすると、設定されたOCRプロバイダー（Azure Document Intelligence / Tesseract / AWS Tesseract）による
+> OCR処理が自動実行され、テキストが抽出されます。テキスト埋め込みPDFの場合はOCRなしでもPyPDF2で抽出可能です」
 
 #### 2.2 OCR結果の確認
 
@@ -270,7 +270,8 @@ python backend/scripts/seed_demo_data.py
 ### Q4: オンプレミス環境でも利用できますか？
 > A: Dockerコンテナで提供しているため、
 > オンプレミス環境へのデプロイも可能です。
-> Azure OpenAI の代わりにローカルLLMを使用する構成も検討できます。
+> Ollama（ローカルLLM）とTesseract（ローカルOCR）を使用すれば、
+> クラウド接続なしで完全オンプレミス運用が可能です。
 
 ### Q5: 処理時間はどの程度ですか？
 > A: 10ページ程度の規程であれば、通常1-3分でレビューが完了します。
@@ -292,13 +293,17 @@ docker-compose up -d
 ```
 
 ### APIエラーが発生する場合
-1. .env ファイルのAzure OpenAI設定を確認
+1. `.env` ファイルのLLMプロバイダー設定を確認（`LLM_PROVIDER`と対応する認証情報）
 2. APIキーの有効期限を確認
 3. Rate Limitに達していないか確認
+4. Ollama使用時は `ollama list` でモデルがインストール済みか確認
 
 ### OCRが動作しない場合
-1. Azure Document Intelligence の設定を確認
-2. 代替としてPyPDF2によるテキスト抽出が動作します
+1. 設定されたOCRプロバイダーの設定を確認（`OCR_PROVIDER`環境変数）
+   - Azure Document Intelligence: エンドポイントとAPIキー
+   - Tesseract: `tesseract --version` でインストール確認、`TESSERACT_LANG=jpn+eng` 設定
+   - AWS Tesseract: エンドポイントURLの疎通確認
+2. 代替としてPyPDF2によるテキスト抽出が動作します（テキスト埋め込みPDFのみ）
 
 ---
 
