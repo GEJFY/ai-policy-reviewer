@@ -48,10 +48,11 @@ prometheus-client==0.21.1
 # Security & Authentication
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
 
 # Development & Testing
 pytest==8.3.4
 pytest-asyncio==0.25.2
 pytest-cov==6.0.0
 ruff==0.9.4
-black==25.1.0
+black==26.1.0
