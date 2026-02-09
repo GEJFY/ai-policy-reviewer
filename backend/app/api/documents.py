@@ -6,7 +6,7 @@ API endpoints for Document management.
 
 主要機能:
     - PDFファイルのアップロード
-    - Azure Document IntelligenceによるOCR処理
+    - マルチプロバイダーOCR処理（Azure Doc Intel / Tesseract / AWS Tesseract）
     - テキストのチャンク分割とベクトル埋め込み生成
     - 文書の一覧・詳細取得
     - 抽出テキストの参照
@@ -19,7 +19,7 @@ API endpoints for Document management.
     5. レビュー作成が可能に
 
 依存サービス:
-    - OCRService: Azure Document Intelligence連携
+    - OCRServiceFactory: マルチプロバイダーOCR
     - ChunkingService: テキスト分割
     - EmbeddingService: ベクトル埋め込み生成
 """
@@ -37,7 +37,7 @@ from app.schemas.document import (
     DocumentChunkResponse,
     DocumentUploadResponse,
 )
-from app.services.ocr_service import ocr_service
+from app.services.ocr_service import ocr_service, OCRServiceFactory
 from app.services.chunking_service import chunking_service
 from app.services.embedding_service import embedding_service
 from app.core.logging_config import get_logger
@@ -275,7 +275,7 @@ async def process_document_ocr(document_id: int):
         try:
             # Extract text
             if ocr_service.is_available():
-                logger.info(f"Using Azure Document Intelligence for OCR: document_id={document_id}")
+                logger.info(f"Using {ocr_service.provider_name()} for OCR: document_id={document_id}")
                 extracted_text = await ocr_service.extract_text_from_pdf(document.file_path)
             else:
                 # Fallback: try basic text extraction

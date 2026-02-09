@@ -2,17 +2,22 @@
 Unified LLM Service for multi-cloud support.
 
 マルチクラウドLLMプロバイダーを統合するサービス。
-Azure Foundry, AWS Bedrock, GCP Vertex AIに対応。
+Azure Foundry, AWS Bedrock, GCP Vertex AI, Local (Ollama) に対応。
 
-対応モデル:
-    Azure Foundry:
-        - GPT-5.2, GPT-5-nano
-        - Claude Sonnet 4, Claude Opus 4
+対応モデル（2026年2月時点）:
+    Azure AI Foundry:
+        - GPT-5.2, GPT-5.2-codex, GPT-5-mini, GPT-5-nano
+        - Claude Opus 4.6, Claude Sonnet 4.5, Claude Haiku 4.5
     AWS Bedrock:
-        - Claude Sonnet 4.6, Claude Opus 4
+        - Claude Opus 4.6, Sonnet 4.5, Haiku 4.5
+        - Amazon Nova Premier/Pro/Lite/Micro
+        - Llama 4 Maverick 17B
     GCP Vertex AI:
-        - Gemini 3.0 Flash Preview
-        - Gemini 3.0 Pro Preview
+        - Gemini 3 Pro Preview, Gemini 3 Flash Preview
+        - Claude Opus 4.6, Sonnet 4.5, Haiku 4.5
+    Local (Ollama):
+        - Qwen2.5 3B/0.5B
+        - Gemma-2-2B-JPN-IT (日本語最適化)
 """
 
 import json
@@ -31,6 +36,7 @@ from app.core.resilience.circuit_breaker import (
     azure_openai_breaker,
     aws_bedrock_breaker,
     gcp_vertex_breaker,
+    ollama_breaker,
 )
 from app.core.observability.metrics import LLM_TOKEN_USAGE, LLM_REQUEST_COUNT, LLM_LATENCY, LLM_ERRORS
 
@@ -136,7 +142,7 @@ class AzureOpenAIClient(BaseLLMClient):
 
 
 class AWSBedrockClient(BaseLLMClient):
-    """AWS Bedrock クライアント (Claude Sonnet 4.6, Opus)"""
+    """AWS Bedrock クライアント (Claude, Nova, Llama 4)"""
 
     def __init__(self):
         self.client = None
@@ -224,7 +230,7 @@ class AWSBedrockClient(BaseLLMClient):
 
 
 class GCPVertexClient(BaseLLMClient):
-    """GCP Vertex AI クライアント (Gemini 3.0 Flash/Pro Preview)"""
+    """GCP Vertex AI クライアント (Gemini 3 Pro/Flash Preview)"""
 
     def __init__(self):
         self.model = None
@@ -315,6 +321,93 @@ class GCPVertexClient(BaseLLMClient):
         )
 
 
+class OllamaClient(BaseLLMClient):
+    """
+    Ollama ローカルLLMクライアント
+
+    OpenAI互換エンドポイント (/v1/) を使用。
+    対応モデル: gemma-2-2b-jpn-it (日本語最適化), qwen2.5:3b (多言語)
+    """
+
+    def __init__(self):
+        self.client = None
+        self.base_url = settings.ollama_base_url
+        self.model_name = settings.ollama_model
+        self._initialize()
+
+    def _initialize(self):
+        """Ollamaクライアントを初期化（OpenAI互換API使用）"""
+        if not settings.is_ollama_configured():
+            logger.warning("Ollama not configured")
+            return
+
+        try:
+            from openai import OpenAI
+            # OllamaのOpenAI互換エンドポイントを使用
+            self.client = OpenAI(
+                base_url=f"{self.base_url}/v1",
+                api_key="ollama",  # Ollamaはapi_keyを要求しない（ダミー値）
+            )
+            logger.info(
+                f"Ollama client initialized | "
+                f"base_url={self.base_url} | model={self.model_name}"
+            )
+        except Exception as e:
+            logger.error(f"Failed to initialize Ollama | error={e}")
+
+    def is_available(self) -> bool:
+        return self.client is not None
+
+    async def generate(
+        self,
+        messages: list[dict],
+        temperature: float = 0.3,
+        max_tokens: int = 4000,
+        json_mode: bool = True,
+    ) -> LLMResponse:
+        if not self.client:
+            raise RuntimeError("Ollama client not initialized")
+
+        kwargs = {
+            "model": self.model_name,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+        }
+
+        if json_mode:
+            try:
+                kwargs["response_format"] = {"type": "json_object"}
+                response = self.client.chat.completions.create(**kwargs)
+            except Exception:
+                # response_format非対応モデルの場合はフォーマットなしで実行
+                del kwargs["response_format"]
+                logger.debug(
+                    f"Ollama model {self.model_name} does not support json_mode, "
+                    f"falling back to unformatted output"
+                )
+                response = self.client.chat.completions.create(**kwargs)
+        else:
+            response = self.client.chat.completions.create(**kwargs)
+
+        # トークン使用量の取得（Ollamaは一部のモデルでusageを返さない場合がある）
+        usage = getattr(response, 'usage', None)
+        prompt_tokens = getattr(usage, 'prompt_tokens', 0) if usage else 0
+        completion_tokens = getattr(usage, 'completion_tokens', 0) if usage else 0
+
+        return LLMResponse(
+            content=response.choices[0].message.content,
+            model=self.model_name,
+            provider="local",
+            usage={
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": prompt_tokens + completion_tokens,
+            },
+            raw_response=response,
+        )
+
+
 class UnifiedLLMService:
     """
     統合LLMサービス
@@ -349,6 +442,12 @@ class UnifiedLLMService:
         if vertex_client.is_available():
             self.clients[LLMProvider.GCP_VERTEX] = vertex_client
             self.circuit_breakers[LLMProvider.GCP_VERTEX] = gcp_vertex_breaker
+
+        # Local (Ollama)
+        ollama_client = OllamaClient()
+        if ollama_client.is_available():
+            self.clients[LLMProvider.LOCAL] = ollama_client
+            self.circuit_breakers[LLMProvider.LOCAL] = ollama_breaker
 
         # アクティブプロバイダーを設定
         if settings.llm_provider in self.clients:
@@ -552,6 +651,7 @@ class UnifiedLLMService:
             "InternalServerError",
             "ThrottlingException",  # AWS
             "ResourceExhausted",  # GCP
+            "ConnectionError",  # Ollama (ローカルサービスダウン)
         ]
 
         if error_type in retryable_errors:

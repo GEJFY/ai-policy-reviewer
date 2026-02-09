@@ -309,6 +309,24 @@ azure_doc_intel_breaker = CircuitBreaker(
     ),
 )
 
+ollama_breaker = CircuitBreaker(
+    "ollama",
+    CircuitBreakerConfig(
+        failure_threshold=3,
+        success_threshold=2,
+        recovery_timeout=15,  # ローカルなので短い回復タイムアウト
+    ),
+)
+
+tesseract_breaker = CircuitBreaker(
+    "tesseract",
+    CircuitBreakerConfig(
+        failure_threshold=3,
+        success_threshold=2,
+        recovery_timeout=10,
+    ),
+)
+
 
 def get_all_breakers() -> Dict[str, CircuitBreaker]:
     """全てのサーキットブレーカーを取得。"""
@@ -317,4 +335,6 @@ def get_all_breakers() -> Dict[str, CircuitBreaker]:
         "aws_bedrock": aws_bedrock_breaker,
         "gcp_vertex": gcp_vertex_breaker,
         "azure_doc_intel": azure_doc_intel_breaker,
+        "ollama": ollama_breaker,
+        "tesseract": tesseract_breaker,
     }

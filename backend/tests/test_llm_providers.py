@@ -1,7 +1,7 @@
 """
 LLMプロバイダー接続テスト
 
-マルチクラウドLLMプロバイダー（Azure, AWS Bedrock, GCP Vertex AI）の
+マルチクラウドLLMプロバイダー（Azure, AWS Bedrock, GCP Vertex AI, Local/Ollama）の
 接続と基本機能をテストする。
 
 使用方法:
@@ -9,6 +9,8 @@ LLMプロバイダー接続テスト
     pytest tests/test_llm_providers.py -v -k azure
     pytest tests/test_llm_providers.py -v -k bedrock
     pytest tests/test_llm_providers.py -v -k vertex
+    pytest tests/test_llm_providers.py -v -k ollama
+    pytest tests/test_llm_providers.py -v -k tier
 """
 
 import pytest
@@ -19,12 +21,13 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from app.config import settings, LLMProvider
+from app.config import settings, LLMProvider, ModelTier, MODEL_TIER_DEFAULTS
 from app.services.llm_service import (
     UnifiedLLMService,
     AzureOpenAIClient,
     AWSBedrockClient,
     GCPVertexClient,
+    OllamaClient,
     LLMResponse,
 )
 
@@ -37,6 +40,7 @@ class TestLLMProviderConfiguration:
         assert LLMProvider.AZURE.value == "azure"
         assert LLMProvider.AWS_BEDROCK.value == "aws_bedrock"
         assert LLMProvider.GCP_VERTEX.value == "gcp_vertex"
+        assert LLMProvider.LOCAL.value == "local"
 
     def test_settings_default_provider(self):
         """デフォルトプロバイダーの設定をテスト"""
@@ -377,6 +381,156 @@ class TestRetryLogic:
         response = await service.generate([{"role": "user", "content": "test"}])
         assert response.content == '{"result": "success"}'
         assert response.usage["total_tokens"] == 15
+
+
+class TestOllamaClient:
+    """Ollama (Local LLM) クライアントのテスト"""
+
+    def test_client_is_available_method(self):
+        """is_available メソッドのテスト"""
+        client = OllamaClient()
+        result = client.is_available()
+        assert isinstance(result, bool)
+
+    @pytest.mark.asyncio
+    async def test_client_generate_mock(self):
+        """モックを使用した生成テスト"""
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = '{"findings": []}'
+        mock_response.usage = MagicMock()
+        mock_response.usage.prompt_tokens = 50
+        mock_response.usage.completion_tokens = 30
+        mock_response.usage.total_tokens = 80
+        mock_response.model = "qwen2.5:3b"
+
+        mock_openai = MagicMock()
+        mock_openai.chat.completions.create.return_value = mock_response
+
+        client = OllamaClient()
+        client.client = mock_openai
+        client.model_name = "qwen2.5:3b"
+
+        messages = [{"role": "user", "content": "Hello"}]
+        response = await client.generate(messages)
+
+        assert isinstance(response, LLMResponse)
+        assert response.provider == "local"
+        assert response.content == '{"findings": []}'
+        assert response.usage["total_tokens"] == 80
+
+    @pytest.mark.asyncio
+    async def test_client_generate_no_usage(self):
+        """usage情報がないモデルのレスポンステスト"""
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "Hello from Ollama"
+        mock_response.usage = None
+        mock_response.model = "gemma-2-2b-jpn-it"
+
+        mock_openai = MagicMock()
+        mock_openai.chat.completions.create.return_value = mock_response
+
+        client = OllamaClient()
+        client.client = mock_openai
+        client.model_name = "gemma-2-2b-jpn-it"
+
+        messages = [{"role": "user", "content": "Hello"}]
+        response = await client.generate(messages)
+
+        assert isinstance(response, LLMResponse)
+        assert response.provider == "local"
+        assert response.usage["total_tokens"] == 0
+
+
+class TestModelTierSelection:
+    """モデルティア選択のテスト"""
+
+    def test_model_tier_enum(self):
+        """ModelTierのenum値をテスト"""
+        assert ModelTier.PRECISION.value == "precision"
+        assert ModelTier.BALANCED.value == "balanced"
+        assert ModelTier.COST_EFFECTIVE.value == "cost_effective"
+
+    def test_model_tier_defaults_structure(self):
+        """MODEL_TIER_DEFAULTSの構造をテスト"""
+        # 全プロバイダーが含まれること
+        assert LLMProvider.AZURE in MODEL_TIER_DEFAULTS
+        assert LLMProvider.AWS_BEDROCK in MODEL_TIER_DEFAULTS
+        assert LLMProvider.GCP_VERTEX in MODEL_TIER_DEFAULTS
+        assert LLMProvider.LOCAL in MODEL_TIER_DEFAULTS
+
+        # 各プロバイダーが全ティアを持つこと
+        for provider in LLMProvider:
+            tier_map = MODEL_TIER_DEFAULTS[provider]
+            assert ModelTier.PRECISION in tier_map
+            assert ModelTier.BALANCED in tier_map
+            assert ModelTier.COST_EFFECTIVE in tier_map
+
+    def test_model_tier_defaults_values(self):
+        """各プロバイダーのデフォルトモデル値をテスト"""
+        # Azure
+        assert MODEL_TIER_DEFAULTS[LLMProvider.AZURE][ModelTier.PRECISION] == "gpt-5.2"
+
+        # AWS Bedrock
+        assert "claude-opus" in MODEL_TIER_DEFAULTS[LLMProvider.AWS_BEDROCK][ModelTier.PRECISION]
+
+        # GCP Vertex
+        assert "gemini-3" in MODEL_TIER_DEFAULTS[LLMProvider.GCP_VERTEX][ModelTier.PRECISION]
+
+        # Local
+        assert "qwen" in MODEL_TIER_DEFAULTS[LLMProvider.LOCAL][ModelTier.BALANCED]
+
+    def test_get_effective_model_without_tier(self):
+        """ティア未指定時はllm_modelが返ること"""
+        result = settings.get_effective_model()
+        # ティア未設定ならllm_modelそのまま
+        if settings.llm_tier is None:
+            assert result == settings.llm_model
+
+    def test_is_ollama_configured(self):
+        """Ollama設定チェックのテスト"""
+        result = settings.is_ollama_configured()
+        assert isinstance(result, bool)
+        # デフォルトでollama_base_urlが設定されているのでTrue
+        assert result is True
+
+
+class TestOllamaConnectionIntegration:
+    """
+    Ollama接続の統合テスト
+
+    注意: Ollamaが起動中でモデルがpull済みの場合のみ実行。
+    """
+
+    @pytest.mark.skipif(
+        not settings.is_ollama_configured(),
+        reason="Ollama not configured"
+    )
+    @pytest.mark.asyncio
+    async def test_ollama_connection(self):
+        """Ollama接続テスト（qwen2.5:3bを使用）"""
+        client = OllamaClient()
+        # テスト用にpull済みのモデルを明示指定
+        client.model_name = "qwen2.5:3b"
+
+        if not client.is_available():
+            pytest.skip("Ollama server not running")
+
+        messages = [
+            {"role": "user", "content": "Say 'hello' in Japanese. Reply with only the word."}
+        ]
+
+        try:
+            response = await client.generate(messages, max_tokens=50)
+        except Exception as e:
+            if "not found" in str(e).lower():
+                pytest.skip(f"Ollama model not available: {e}")
+            raise
+
+        assert response.provider == "local"
+        assert len(response.content) > 0
+        print(f"Ollama response: {response.content}")
 
 
 if __name__ == "__main__":
