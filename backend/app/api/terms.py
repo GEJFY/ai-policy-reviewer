@@ -17,7 +17,6 @@ from app.schemas.term import (
 from app.services.embedding_service import embedding_service
 from app.services.vector_store import vector_store
 
-
 router = APIRouter(prefix="/api/v1/terms", tags=["Terms"])
 
 

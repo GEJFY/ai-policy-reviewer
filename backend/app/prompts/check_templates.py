@@ -286,8 +286,7 @@ CHECK_TEMPLATES = {
 }
 
 # Default template for unknown categories
-DEFAULT_TEMPLATE = (
-    """# 一般レビュー
+DEFAULT_TEMPLATE = """# 一般レビュー
 
 ## レビュー対象文書
 {document_content}
@@ -298,6 +297,4 @@ DEFAULT_TEMPLATE = (
 ## 指示
 上記のチェック項目に基づいて文書をレビューし、問題点を指摘してください。
 各指摘には、該当箇所・問題内容・改善提案を含めてください。
-"""
-    + OUTPUT_REMINDER
-)
+""" + OUTPUT_REMINDER

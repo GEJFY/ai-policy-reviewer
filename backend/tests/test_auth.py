@@ -12,7 +12,6 @@ from app.main import app
 from app.auth.jwt_handler import JWTHandler
 from app.core.security.rate_limiter import rate_limiter
 
-
 client = TestClient(app)
 
 

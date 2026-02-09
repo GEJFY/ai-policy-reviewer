@@ -20,7 +20,6 @@ from app.core.resilience.circuit_breaker import (
 from app.core.observability.correlation import CorrelationContext
 from app.core.security.rate_limiter import RateLimiter, RateLimitConfig
 
-
 client = TestClient(app)
 
 

@@ -14,7 +14,6 @@ from app.schemas.finding import (
     FindingSummary,
 )
 
-
 router = APIRouter(prefix="/api/v1", tags=["Findings"])
 
 

@@ -13,7 +13,6 @@ from app.models.check_item import CheckItem
 from app.models.writing_rule import WritingRule
 from app.services.embedding_service import embedding_service
 
-
 # ============================================================
 # 用語辞書データ
 # ============================================================

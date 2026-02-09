@@ -13,7 +13,6 @@ from app.schemas.check_item import (
     CheckCategory,
 )
 
-
 router = APIRouter(prefix="/api/v1/check-items", tags=["Check Items"])
 
 

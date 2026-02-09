@@ -13,7 +13,6 @@ from app.schemas.writing_rule import (
     RuleType,
 )
 
-
 router = APIRouter(prefix="/api/v1/writing-rules", tags=["Writing Rules"])
 
 
