@@ -10,7 +10,7 @@ import logging
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Callable, Optional, Dict, Any
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from app.core.observability.metrics import CIRCUIT_BREAKER_STATE, CIRCUIT_BREAKER_FAILURES
 
