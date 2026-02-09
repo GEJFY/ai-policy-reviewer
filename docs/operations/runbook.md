@@ -131,7 +131,7 @@ export TESSERACT_LANG=jpn+eng
 
 # Azure → AWS Tesseract（リモート）
 export OCR_PROVIDER=aws_tesseract
-export AWS_TESSERACT_ENDPOINT=https://your-tesseract-api/ocr
+export AWS_TESSERACT_ENDPOINT=https://your-tesseract-api
 
 # アプリケーション再起動
 kubectl rollout restart deployment/policy-reviewer-backend -n production
