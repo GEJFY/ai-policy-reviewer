@@ -8,7 +8,6 @@ Note:
     TermCreateスキーマでは term, definition, category が必須。
 """
 
-import pytest
 from fastapi.testclient import TestClient
 
 

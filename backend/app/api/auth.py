@@ -6,15 +6,13 @@ Authentication API endpoints.
 """
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel, Field
 
-from app.auth.jwt_handler import jwt_handler, TokenPair
+from app.auth.jwt_handler import jwt_handler
 from app.auth.dependencies import get_current_user, CurrentUser
 from app.core.observability.audit import audit_logger, AuditEventType
-from app.core.observability.correlation import CorrelationContext
 
 logger = logging.getLogger(__name__)
 

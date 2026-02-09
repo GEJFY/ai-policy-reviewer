@@ -19,7 +19,6 @@ from app.core.exceptions import (
     AuthorizationError,
     ResourceNotFoundError,
     ValidationError,
-    ExternalServiceError,
     ServiceUnavailableError,
     RateLimitExceededError,
 )

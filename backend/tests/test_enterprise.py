@@ -7,15 +7,12 @@ Enterprise feature tests.
 
 import asyncio
 import pytest
-from unittest.mock import AsyncMock, MagicMock
-from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.core.resilience.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitState, CircuitBreakerOpenError
 from app.core.observability.correlation import CorrelationContext
-from app.core.observability.metrics import get_metrics_text, REGISTRY
 from app.core.security.rate_limiter import RateLimiter, RateLimitConfig
 
 

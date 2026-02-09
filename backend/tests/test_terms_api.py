@@ -11,7 +11,6 @@ Note:
     - category: カテゴリ
 """
 
-import pytest
 from fastapi.testclient import TestClient
 
 

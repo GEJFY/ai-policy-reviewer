@@ -23,7 +23,6 @@ API endpoints for Review management.
     - VectorStore: 類似用語検索
 """
 
-from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
 from sqlalchemy.orm import Session
 from typing import Optional

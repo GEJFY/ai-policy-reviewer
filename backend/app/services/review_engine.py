@@ -20,10 +20,9 @@ import json
 import time
 import logging
 from datetime import datetime, timezone
-from typing import Optional
 from sqlalchemy.orm import Session
 
-from app.config import settings, LLMProvider
+from app.config import LLMProvider
 from app.models.term import Term
 from app.models.check_item import CheckItem
 from app.models.writing_rule import WritingRule
@@ -344,7 +343,7 @@ class ReviewEngine:
         """Get writing rules for a category."""
         return (
             db.query(WritingRule)
-            .filter(WritingRule.is_active == True)
+            .filter(WritingRule.is_active.is_(True))
             .limit(20)
             .all()
         )

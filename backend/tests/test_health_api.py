@@ -4,7 +4,6 @@ Health API endpoint tests.
 ヘルスチェックAPIのテスト。
 """
 
-import pytest
 from fastapi.testclient import TestClient
 
 

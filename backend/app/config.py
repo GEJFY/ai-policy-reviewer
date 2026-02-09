@@ -245,25 +245,39 @@ class Settings(BaseSettings):
         return bool(self.azure_doc_intel_endpoint and self.azure_doc_intel_key)
 
     def is_tesseract_configured(self) -> bool:
-        """ローカルTesseractが利用可能かチェック。"""
+        """ローカルTesseractが利用可能かチェック（実行ファイルの存在を検証）。"""
+        import os
+        import shutil
+        # 明示パス指定時: 実行ファイルが存在するか検証
         if self.tesseract_path:
-            return True
-        return self.ocr_provider == OCRProvider.TESSERACT
+            return os.path.isfile(self.tesseract_path)
+        # パス未指定時: PATHにtesseractが存在するか検証
+        return shutil.which("tesseract") is not None
 
     def is_aws_tesseract_configured(self) -> bool:
         """AWS Tesseractエンドポイントが設定されているかチェック。"""
         return bool(self.aws_tesseract_endpoint)
 
-    def get_effective_model(self) -> str:
+    def get_effective_model(self, provider: Optional["LLMProvider"] = None) -> str:
         """
         実効モデル名を取得。
         llm_tierが設定されている場合、プロバイダーのティア対応モデルを返す。
-        llm_modelが明示的に変更されている場合はそちらを優先。
+        provider未指定時はllm_providerを使用。
         """
+        target_provider = provider or self.llm_provider
         if self.llm_tier:
-            tier_defaults = MODEL_TIER_DEFAULTS.get(self.llm_provider, {})
-            return tier_defaults.get(self.llm_tier, self.llm_model)
-        return self.llm_model
+            tier_defaults = MODEL_TIER_DEFAULTS.get(target_provider, {})
+            tier_model = tier_defaults.get(self.llm_tier)
+            if tier_model:
+                return tier_model
+        # ティア未設定時: プロバイダー固有の設定値を返す
+        provider_model_map = {
+            LLMProvider.AZURE: self.azure_openai_deployment,
+            LLMProvider.AWS_BEDROCK: self.aws_bedrock_model_id,
+            LLMProvider.GCP_VERTEX: self.gcp_vertex_model,
+            LLMProvider.LOCAL: self.ollama_model,
+        }
+        return provider_model_map.get(target_provider, self.llm_model)
 
     def get_available_providers(self) -> list[LLMProvider]:
         """設定済みの利用可能なプロバイダーを返す。"""

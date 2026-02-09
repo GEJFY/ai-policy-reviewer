@@ -139,7 +139,7 @@ class TestTesseractOCRService:
         mock_images = [MagicMock(), MagicMock()]
 
         with patch('pytesseract.image_to_string') as mock_img_to_str, \
-             patch('pytesseract.pytesseract') as mock_tess_cmd, \
+             patch('pytesseract.pytesseract'), \
              patch('pdf2image.convert_from_bytes') as mock_convert:
 
             mock_convert.return_value = mock_images

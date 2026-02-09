@@ -38,7 +38,7 @@ from app.core.resilience.circuit_breaker import (
     gcp_vertex_breaker,
     ollama_breaker,
 )
-from app.core.observability.metrics import LLM_TOKEN_USAGE, LLM_REQUEST_COUNT, LLM_LATENCY, LLM_ERRORS
+from app.core.observability.metrics import LLM_TOKEN_USAGE, LLM_REQUEST_COUNT, LLM_LATENCY
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +85,7 @@ class AzureOpenAIClient(BaseLLMClient):
 
     def __init__(self):
         self.client = None
-        self.deployment = settings.azure_openai_deployment
+        self.deployment = settings.get_effective_model(LLMProvider.AZURE)
         self._initialize()
 
     def _initialize(self):
@@ -146,7 +146,7 @@ class AWSBedrockClient(BaseLLMClient):
 
     def __init__(self):
         self.client = None
-        self.model_id = settings.aws_bedrock_model_id
+        self.model_id = settings.get_effective_model(LLMProvider.AWS_BEDROCK)
         self._initialize()
 
     def _initialize(self):
@@ -234,7 +234,7 @@ class GCPVertexClient(BaseLLMClient):
 
     def __init__(self):
         self.model = None
-        self.model_name = settings.gcp_vertex_model
+        self.model_name = settings.get_effective_model(LLMProvider.GCP_VERTEX)
         self._initialize()
 
     def _initialize(self):
@@ -332,7 +332,7 @@ class OllamaClient(BaseLLMClient):
     def __init__(self):
         self.client = None
         self.base_url = settings.ollama_base_url
-        self.model_name = settings.ollama_model
+        self.model_name = settings.get_effective_model(LLMProvider.LOCAL)
         self._initialize()
 
     def _initialize(self):

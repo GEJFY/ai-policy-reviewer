@@ -12,7 +12,6 @@ Note:
     - pattern, example_bad, example_good: オプション
 """
 
-import pytest
 from fastapi.testclient import TestClient
 
 
@@ -201,7 +200,7 @@ class TestWritingRulesAPI:
             response = client.post("/api/v1/writing-rules", json={
                 "name": f"ルール_{rule_type}",
                 "rule_type": rule_type,
-                "correct_form": f"テスト形式"
+                "correct_form": "テスト形式"
             })
             assert response.status_code == 201
             assert response.json()["rule_type"] == rule_type

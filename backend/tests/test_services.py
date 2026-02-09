@@ -5,8 +5,7 @@ Service layer unit tests.
 ビジネスロジックと外部サービス連携のテスト。
 """
 
-import pytest
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import patch
 
 from app.services.chunking_service import ChunkingService
 from app.services.embedding_service import EmbeddingService

@@ -10,7 +10,6 @@ PDFからテキストを抽出するためのマルチプロバイダーOCRサ�
 
 import time
 import logging
-import tempfile
 from abc import ABC, abstractmethod
 from typing import Optional
 
@@ -188,7 +187,6 @@ class TesseractOCRService(BaseOCRService):
         """PDF → 画像 → テキスト変換。"""
         import pytesseract
         from pdf2image import convert_from_bytes
-        from PIL import Image
 
         if settings.tesseract_path:
             pytesseract.pytesseract.tesseract_cmd = settings.tesseract_path

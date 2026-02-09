@@ -13,7 +13,6 @@ def create_tables():
         os.makedirs(data_dir, exist_ok=True)
 
     # Import all models to ensure they are registered with Base
-    from app.models import term, check_item, writing_rule, document, review
 
     # Create tables
     Base.metadata.create_all(bind=engine)

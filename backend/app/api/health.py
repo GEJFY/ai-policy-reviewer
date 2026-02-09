@@ -10,7 +10,7 @@ Kubernetesプローブおよび監視用のヘルスチェックエンドポイ�
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
@@ -18,7 +18,7 @@ from sqlalchemy import text
 
 from app.db.database import get_db
 from app.config import settings
-from app.core.resilience.circuit_breaker import get_all_breakers, CircuitState
+from app.core.resilience.circuit_breaker import get_all_breakers
 
 logger = logging.getLogger(__name__)
 

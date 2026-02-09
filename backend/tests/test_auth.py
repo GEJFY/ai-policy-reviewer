@@ -4,14 +4,12 @@ Authentication module tests.
 認証モジュール（JWT、ログイン、登録、ロールベースアクセス制御）のテスト。
 """
 
-import pytest
 from datetime import timedelta
-from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.auth.jwt_handler import JWTHandler, TokenPayload
+from app.auth.jwt_handler import JWTHandler
 from app.core.security.rate_limiter import rate_limiter
 
 

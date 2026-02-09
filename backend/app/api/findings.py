@@ -12,7 +12,6 @@ from app.schemas.finding import (
     FindingApprovalRequest,
     BulkApprovalRequest,
     FindingSummary,
-    FindingStatus,
 )
 
 

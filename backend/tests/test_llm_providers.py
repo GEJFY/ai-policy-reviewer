@@ -482,11 +482,20 @@ class TestModelTierSelection:
         assert "qwen" in MODEL_TIER_DEFAULTS[LLMProvider.LOCAL][ModelTier.BALANCED]
 
     def test_get_effective_model_without_tier(self):
-        """ティア未指定時はllm_modelが返ること"""
+        """ティア未指定時はプロバイダー固有の設定値が返ること"""
         result = settings.get_effective_model()
-        # ティア未設定ならllm_modelそのまま
+        # ティア未設定ならプロバイダー固有の設定値
         if settings.llm_tier is None:
-            assert result == settings.llm_model
+            assert result == settings.get_effective_model(settings.llm_provider)
+
+    def test_get_effective_model_per_provider(self):
+        """各プロバイダーのget_effective_modelが正しいモデルを返すこと"""
+        # ティア未設定時: プロバイダー固有設定値
+        if settings.llm_tier is None:
+            assert settings.get_effective_model(LLMProvider.AZURE) == settings.azure_openai_deployment
+            assert settings.get_effective_model(LLMProvider.AWS_BEDROCK) == settings.aws_bedrock_model_id
+            assert settings.get_effective_model(LLMProvider.GCP_VERTEX) == settings.gcp_vertex_model
+            assert settings.get_effective_model(LLMProvider.LOCAL) == settings.ollama_model
 
     def test_is_ollama_configured(self):
         """Ollama設定チェックのテスト"""

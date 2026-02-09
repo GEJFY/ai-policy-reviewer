@@ -5,7 +5,6 @@ Check Items API endpoint tests.
 CRUD操作と検証ロジックのテスト。
 """
 
-import pytest
 from fastapi.testclient import TestClient
 
 

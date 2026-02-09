@@ -5,12 +5,9 @@
 
 import json
 import asyncio
-import struct
-from datetime import datetime
 
 from sqlalchemy.orm import Session
-from app.db.database import SessionLocal, engine
-from app.models.base import Base
+from app.db.database import SessionLocal
 from app.models.term import Term
 from app.models.check_item import CheckItem
 from app.models.writing_rule import WritingRule

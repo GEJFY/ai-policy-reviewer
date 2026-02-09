@@ -37,7 +37,7 @@ from app.schemas.document import (
     DocumentChunkResponse,
     DocumentUploadResponse,
 )
-from app.services.ocr_service import ocr_service, OCRServiceFactory
+from app.services.ocr_service import ocr_service
 from app.services.chunking_service import chunking_service
 from app.services.embedding_service import embedding_service
 from app.core.logging_config import get_logger

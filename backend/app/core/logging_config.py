@@ -3,13 +3,12 @@
 本番運用レベルの構造化ログを提供する
 """
 
-import os
 import sys
 import logging
 import json
 from datetime import datetime, timezone
 from typing import Optional, Any, Dict
-from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from app.config import settings

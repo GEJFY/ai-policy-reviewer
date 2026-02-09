@@ -75,10 +75,10 @@ module "openai" {
   custom_subdomain_name = "${local.project}-${local.environment}"
 
   # 開発環境では低コスト設定
-  deploy_gpt5      = true
-  gpt5_capacity    = 5  # 低キャパシティ
-  deploy_gpt5_nano = false
-  deploy_embedding = true
+  deploy_gpt5        = true
+  gpt5_capacity      = 5 # 低キャパシティ
+  deploy_gpt5_nano   = false
+  deploy_embedding   = true
   embedding_capacity = 20
 
   # パブリックアクセス許可（開発用）
@@ -106,11 +106,11 @@ module "container_apps" {
   backend_max_replicas = 3
 
   backend_env_vars = {
-    "DEBUG" = { value = "true" }
-    "LLM_PROVIDER" = { value = "azure" }
-    "AZURE_OPENAI_ENDPOINT" = { value = module.openai.endpoint }
+    "DEBUG"                   = { value = "true" }
+    "LLM_PROVIDER"            = { value = "azure" }
+    "AZURE_OPENAI_ENDPOINT"   = { value = module.openai.endpoint }
     "AZURE_OPENAI_DEPLOYMENT" = { value = module.openai.gpt5_deployment_name }
-    "AZURE_OPENAI_API_KEY" = { secret_name = "azure-openai-key" }
+    "AZURE_OPENAI_API_KEY"    = { secret_name = "azure-openai-key" }
   }
 
   backend_secrets = {
@@ -119,13 +119,13 @@ module "container_apps" {
   }
 
   # フロントエンド設定
-  deploy_frontend      = var.deploy_frontend
-  frontend_image       = var.frontend_image
+  deploy_frontend       = var.deploy_frontend
+  frontend_image        = var.frontend_image
   frontend_min_replicas = 1
   frontend_max_replicas = 2
 
   # オートスケール
-  enable_autoscaling           = true
+  enable_autoscaling            = true
   autoscale_concurrent_requests = 50
 
   tags = local.common_tags
