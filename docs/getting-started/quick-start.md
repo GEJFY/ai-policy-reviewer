@@ -5,33 +5,35 @@
 ## 前提条件
 
 - Python 3.11以上
-- Node.js 18以上
-- Azure/AWS/GCPいずれかのアカウント（LLM API用）
+- Node.js 20以上
+- 以下のいずれか（LLM API用）:
+  - Azure/AWS/GCPいずれかのアカウント
+  - Ollama（ローカルLLM、無料）
 
 ## Step 1: リポジトリのクローン（30秒）
 
 ```bash
-git clone https://github.com/your-org/ai-policy-reviewer.git
+git clone https://github.com/GEJFY/ai-policy-reviewer.git
 cd ai-policy-reviewer
 ```
 
 ## Step 2: 環境変数の設定（1分）
 
-### バックエンド設定
+### 環境変数設定
 
-```bash
-cd backend
-cp .env.example .env
+```powershell
+copy .env.example .env
 ```
 
 `.env`ファイルを編集して、使用するLLMプロバイダーの認証情報を設定：
 
-**Azure OpenAIの場合：**
+**Azure AI Foundryの場合：**
 ```env
 LLM_PROVIDER=azure
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_API_KEY=your-api-key
 AZURE_OPENAI_DEPLOYMENT=gpt-5-2
+AZURE_OPENAI_USE_V1_API=true
 ```
 
 **AWS Bedrockの場合：**
@@ -40,14 +42,23 @@ LLM_PROVIDER=aws_bedrock
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=your-access-key
 AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-5-20250929-v1:0
 ```
 
 **GCP Vertex AIの場合：**
 ```env
 LLM_PROVIDER=gcp_vertex
 GCP_PROJECT_ID=your-project-id
-GCP_LOCATION=us-central1
+GCP_LOCATION=global
 GCP_CREDENTIALS_PATH=/path/to/credentials.json
+GCP_VERTEX_MODEL=gemini-3-flash-preview
+```
+
+**Ollama（ローカル、無料）の場合：**
+```env
+LLM_PROVIDER=local
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=qwen2.5:3b
 ```
 
 ## Step 3: バックエンドの起動（1分）
@@ -79,15 +90,15 @@ npm run dev
 
 ブラウザで以下のURLにアクセス：
 
-- フロントエンド: http://localhost:3000
+- フロントエンド: http://localhost:3030
 - API Docs: http://localhost:8080/docs
 - ヘルスチェック: http://localhost:8080/health/detailed
 
 ## 次のステップ
 
-- [詳細インストールガイド](./installation.md) - 本番環境向けセットアップ
-- [設定リファレンス](./configuration.md) - 全設定オプションの説明
-- [初回レビューチュートリアル](./first-review.md) - 実際のレビューを実行
+- [詳細セットアップガイド](../SETUP_GUIDE.md) - 全プロバイダー対応の詳細設定
+- [ユーザーマニュアル](../USER_MANUAL.md) - 画面操作の詳細
+- [デモガイド](../DEMO_GUIDE.md) - デモ操作の手順
 
 ## トラブルシューティング
 
@@ -117,4 +128,4 @@ ModuleNotFoundError: No module named 'xxx'
 
 ## サポート
 
-問題が解決しない場合は、[GitHubのIssue](https://github.com/your-org/ai-policy-reviewer/issues)で報告してください。
+問題が解決しない場合は、[GitHubのIssue](https://github.com/GEJFY/ai-policy-reviewer/issues)で報告してください。

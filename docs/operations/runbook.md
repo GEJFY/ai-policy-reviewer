@@ -90,18 +90,84 @@ curl -X POST http://localhost:8080/api/v1/admin/circuit-breakers/reset
 curl http://localhost:8080/health/detailed | jq '.circuit_breakers'
 ```
 
-2. プロバイダー切り替え（Azure → AWS Bedrock）
+2. プロバイダー切り替え
 ```bash
-# 環境変数を変更
-export LLM_PROVIDER=aws_bedrock
+# 環境変数を変更（切り替え先に応じて選択）
+export LLM_PROVIDER=aws_bedrock   # Azure障害時 → AWS Bedrock
+export LLM_PROVIDER=gcp_vertex    # Azure障害時 → GCP Vertex AI
+export LLM_PROVIDER=azure         # AWS/GCP障害時 → Azure
+export LLM_PROVIDER=local         # クラウド全停止時 → Ollama（ローカル）
 
 # アプリケーション再起動（Kubernetes）
 kubectl rollout restart deployment/policy-reviewer-backend -n production
+
+# ローカル環境の場合
+# uvicornプロセスを再起動
 ```
 
 3. 監視継続
 ```bash
 watch -n 5 'curl -s http://localhost:8080/health/detailed | jq ".llm_service"'
+```
+
+### OCRプロバイダー障害
+
+**症状:**
+- 文書アップロード後のOCR処理が失敗
+- ログに "OCR extraction failed" エラー
+
+**対応手順:**
+
+1. 現在のOCRプロバイダー確認
+```bash
+curl http://localhost:8080/health/detailed | jq '.ocr_service'
+```
+
+2. プロバイダー切り替え
+```bash
+# Azure Document Intelligence → Tesseract（ローカル）
+export OCR_PROVIDER=tesseract
+export TESSERACT_LANG=jpn+eng
+
+# Azure → AWS Tesseract（リモート）
+export OCR_PROVIDER=aws_tesseract
+export AWS_TESSERACT_ENDPOINT=https://your-tesseract-api
+
+# アプリケーション再起動
+kubectl rollout restart deployment/policy-reviewer-backend -n production
+```
+
+3. テキスト埋め込みPDFの場合はPyPDF2フォールバックが自動動作
+
+### Ollama（ローカルLLM）障害
+
+**症状:**
+- `LLM_PROVIDER=local` でレビューが失敗
+- `ConnectionError` がログに出力
+
+**対応手順:**
+
+1. Ollamaサービス確認
+```bash
+# サービス状態確認
+curl http://localhost:11434/api/tags
+
+# モデル一覧確認
+ollama list
+```
+
+2. Ollamaが停止している場合
+```bash
+# サービス再起動
+ollama serve
+
+# モデルが未インストールの場合
+ollama pull qwen2.5:3b
+```
+
+3. クラウドプロバイダーへフォールバック
+```bash
+export LLM_PROVIDER=azure  # または aws_bedrock / gcp_vertex
 ```
 
 ### データベース障害

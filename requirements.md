@@ -93,8 +93,9 @@ AIレビュー時に適用するチェック項目を定義・管理する機能
 
 6. 設計方針・アーキテクチャ
 6.1 基本コンセプト
-ローカルファースト：開発者のPCでDocker Composeにより即座に起動可能
-クラウドAI活用：LLM/OCR処理はAzure OpenAI・Document Intelligenceを利用
+ローカルファースト：開発者のPCでDocker Composeまたはバッチファイルにより即座に起動可能
+マルチクラウドAI活用：LLM処理はAzure AI Foundry / AWS Bedrock / GCP Vertex AI / Ollama（ローカル）に対応
+マルチOCR対応：OCR処理はAzure Document Intelligence / Tesseract（ローカル）/ AWS Tesseract（リモート）に対応
 デプロイ容易性：同一コードベースでローカル→サーバーへシームレス移行
 シンプル構成：過剰な分散構成を避け、モノリシック構成を採用
 データポータビリティ：SQLite（ローカル）→ PostgreSQL（サーバー）切替可能
@@ -125,12 +126,26 @@ AIレビュー時に適用するチェック項目を定義・管理する機能
                                 │ HTTPS (外部API)
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                         Azure Cloud                            │
-│   ┌─────────────────────┐    ┌─────────────────────┐          │
-│   │   Azure OpenAI      │    │ Document Intelligence│          │
-│   │   - GPT-4o          │    │ - PDF OCR            │          │
-│   │   - Embedding       │    │ - 表抽出             │          │
-│   └─────────────────────┘    └─────────────────────┘          │
+│                    クラウド / 外部サービス                       │
+│                                                                 │
+│  LLMプロバイダー（いずれか選択）:                                │
+│   ┌──────────────┐ ┌──────────────┐ ┌──────────────┐           │
+│   │ Azure AI     │ │ AWS Bedrock  │ │ GCP Vertex   │           │
+│   │ Foundry      │ │              │ │ AI           │           │
+│   │ GPT-5.2等    │ │ Claude等     │ │ Gemini等     │           │
+│   └──────────────┘ └──────────────┘ └──────────────┘           │
+│                                                                 │
+│  OCRプロバイダー（いずれか選択）:                                │
+│   ┌──────────────┐ ┌──────────────┐ ┌──────────────┐           │
+│   │ Azure Doc    │ │ Tesseract    │ │ AWS          │           │
+│   │ Intelligence │ │ (ローカル)    │ │ Tesseract    │           │
+│   └──────────────┘ └──────────────┘ └──────────────┘           │
+│                                                                 │
+│  ローカルLLM（オプション）:                                      │
+│   ┌──────────────┐                                              │
+│   │ Ollama       │                                              │
+│   │ qwen2.5等    │                                              │
+│   └──────────────┘                                              │
 └─────────────────────────────────────────────────────────────────┘
 
 6.4 技術スタック概要
@@ -140,15 +155,22 @@ AIレビュー時に適用するチェック項目を定義・管理する機能
 
 7.2 バックエンド（FastAPI）
 
-7.3 Azure サービス
-7.3.1 Azure OpenAI Service
+7.3 外部AI サービス
+7.3.1 LLMプロバイダー（マルチクラウド対応）
 
-リージョン：Japan East 推奨（低レイテンシ）
+以下のプロバイダーから選択可能。環境変数 `LLM_PROVIDER` で切り替え：
+- **Azure AI Foundry**: GPT-5.2, Claude Opus 4.6, Claude Sonnet 4.5 等
+- **AWS Bedrock**: Claude Opus 4.6, Claude Sonnet 4.5, Nova Premier/Pro 等
+- **GCP Vertex AI**: Gemini 3 Pro/Flash, Claude Opus 4.6 等
+- **Ollama（ローカル）**: qwen2.5:3b, gemma-2-2b-jpn-it 等（無料）
 
-7.3.2 Azure Document Intelligence
-PDF/画像からのOCRテキスト抽出に使用。スキャンPDFや画像埋め込みPDFに対応。
+モデルティア選択（`LLM_TIER`）で精度/コストバランスを自動調整可能。
 
-SKU：S0（従量課金）— 月額数千円程度
+7.3.2 OCRプロバイダー（マルチ対応）
+PDF/画像からのOCRテキスト抽出に使用。環境変数 `OCR_PROVIDER` で切り替え：
+- **Azure Document Intelligence**: 高精度クラウドOCR（推奨）
+- **Tesseract（ローカル）**: 無料、日本語言語パック対応
+- **AWS Tesseract（リモート）**: AWS上のTesseract REST API
 
 7.4 データベース設計
 ローカル環境ではSQLite、サーバー環境ではPostgreSQLを使用。環境変数切替のみで移行可能。
@@ -156,19 +178,17 @@ SKU：S0（従量課金）— 月額数千円程度
 
 8. 主要機能の実装方針
 8.1 PDF OCR処理
-Azure Document Intelligence を使用してPDFからテキスト抽出を行う。
+OCRServiceFactory により選択されたプロバイダーでPDFからテキスト抽出を行う。
 
 # backend/app/services/ocr_service.py
 
-class OCRService:
-    async def extract_text_from_pdf(self, file_path: str) -> str:
-        with open(file_path, 'rb') as f:
-            poller = self.client.begin_analyze_document(
-                'prebuilt-read', body=f, content_type='application/pdf'
-            )
-        result = poller.result()
-        return '\n'.join(line.content for page in result.pages
-                         for line in page.lines)
+class BaseOCRService(ABC):
+    """OCRプロバイダーの基底クラス"""
+    async def extract_text_from_pdf(self, file_path: str) -> str: ...
+
+# プロバイダー実装: AzureDocIntelOCRService, TesseractOCRService, AWSTesseractOCRService
+# ファクトリで環境変数に応じたプロバイダーを自動選択
+ocr_service = OCRServiceFactory.create()
 
 8.2 RAGレビュー処理
 用語辞書・チェック項目をベクトル検索でコンテキストとして取得し、LLMに送信する。
@@ -184,10 +204,10 @@ class ReviewEngine:
             relevant_terms = await self.vector_search_terms(check_item.name)
             
             messages = self.build_prompt(check_item, relevant_terms, doc_chunks)
-            
-            response = await self.openai_client.chat.completions.create(
-                model='gpt-4o-review', messages=messages, temperature=0.3
-            )
+
+            # UnifiedLLMServiceが設定されたプロバイダーで自動実行
+            response = await self.llm_service.generate(messages=messages)
+            # プロバイダー: Azure / AWS Bedrock / GCP Vertex / Ollama
             await self.save_findings(document_id, check_item_id, response)
 
 8.3 ベクトル検索（sqlite-vec）
@@ -203,20 +223,42 @@ class VectorStore:
 
 9. 環境構築・起動方法
 9.1 前提条件
-Docker Desktop インストール済み
-Azure OpenAI リソース作成済み（GPT-4o, Embeddingデプロイ済み）
-Azure Document Intelligence リソース作成済み
+Docker Desktop インストール済み（Docker使用時）、または Python 3.11+ / Node.js 20+
+以下のいずれかのLLMプロバイダーが利用可能:
+- Azure AI Foundry（デプロイ済みモデル）
+- AWS Bedrock（モデルアクセス有効化済み）
+- GCP Vertex AI（API有効化済み）
+- Ollama（ローカルインストール済み、無料）
+OCRプロバイダー（オプション）: Azure Document Intelligence / Tesseract / AWS Tesseract
 
 9.2 環境変数設定（.env）
 
-# Azure OpenAI
+# LLMプロバイダー選択: azure / aws_bedrock / gcp_vertex / local
+LLM_PROVIDER=azure
+
+# Azure AI Foundry
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_API_KEY=your-api-key
-AZURE_OPENAI_DEPLOYMENT=gpt-4o-review
-AZURE_OPENAI_EMBEDDING_DEPLOYMENT=embedding-large
-AZURE_OPENAI_API_VERSION=2024-08-01-preview
+AZURE_OPENAI_DEPLOYMENT=gpt-5-2
+AZURE_OPENAI_USE_V1_API=true
 
-# Azure Document Intelligence
+# AWS Bedrock（オプション）
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your-access-key
+AWS_SECRET_ACCESS_KEY=your-secret-key
+AWS_BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-5-20250929-v1:0
+
+# GCP Vertex AI（オプション）
+GCP_PROJECT_ID=your-project-id
+GCP_LOCATION=global
+GCP_VERTEX_MODEL=gemini-3-flash-preview
+
+# Ollama（ローカル、無料）
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=qwen2.5:3b
+
+# OCRプロバイダー: azure_doc_intel / tesseract / aws_tesseract
+OCR_PROVIDER=azure_doc_intel
 AZURE_DOC_INTEL_ENDPOINT=https://your-resource.cognitiveservices.azure.com/
 AZURE_DOC_INTEL_KEY=your-api-key
 

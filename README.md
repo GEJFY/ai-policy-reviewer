@@ -4,7 +4,7 @@ AIを活用した社内規程文書のレビューシステムです。マルチ
 
 ## 主な機能
 
-- **PDF文書のOCR処理**: Azure Document Intelligenceを使用した高精度なテキスト抽出
+- **PDF文書のOCR処理**: マルチOCR対応（Azure Document Intelligence / Tesseract / AWS Tesseract）
 - **マルチクラウドAIレビュー**: 7カテゴリの品質チェック
   - 用語統一チェック
   - 曖昧表現チェック
@@ -14,9 +14,10 @@ AIを活用した社内規程文書のレビューシステムです。マルチ
   - セキュリティ要件チェック
   - 実務適合性チェック
 - **マルチクラウドLLM対応**:
-  - **Azure Foundry**: GPT-5.2, GPT-5-nano, Claude Sonnet 4, Claude Opus 4
-  - **AWS Bedrock**: Claude Sonnet 4.6, Claude Opus 4
-  - **GCP Vertex AI**: Gemini 3.0 Flash Preview, Gemini 3.0 Pro Preview
+  - **Azure AI Foundry**: GPT-5.2, GPT-5.2-codex, Claude Opus 4.6, Claude Sonnet 4.5
+  - **AWS Bedrock**: Claude Opus 4.6, Claude Sonnet 4.5, Nova Premier/Pro/Micro, Llama 4 Maverick
+  - **GCP Vertex AI**: Gemini 3 Pro/Flash Preview, Claude Opus 4.6, Claude Sonnet 4.5
+  - **Ollama（ローカル）**: qwen2.5:3b, gemma-2-2b-jpn-it（無料、オフライン対応）
 - **マスタデータ管理**: 用語辞書、チェック項目、記載ルールの管理
 - **承認ワークフロー**: 指摘事項の承認/却下/保留の管理
 - **ベクトル検索**: 類似用語の検索機能
@@ -33,40 +34,59 @@ AIを活用した社内規程文書のレビューシステムです。マルチ
                     ┌──────────────────┼──────────────────┐
                     ▼                  ▼                  ▼
            ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-           │   SQLite     │   │ Multi-Cloud  │   │  Azure Doc   │
-           │   Database   │   │     LLM      │   │ Intelligence │
+           │   SQLite     │   │ Multi-Cloud  │   │  Multi-OCR   │
+           │   Database   │   │     LLM      │   │   Provider   │
            └──────────────┘   └──────────────┘   └──────────────┘
-                                    │
-                    ┌───────────────┼───────────────┐
-                    ▼               ▼               ▼
-              ┌──────────┐   ┌──────────┐   ┌──────────┐
-              │  Azure   │   │   AWS    │   │   GCP    │
-              │ Foundry  │   │ Bedrock  │   │ Vertex   │
-              └──────────┘   └──────────┘   └──────────┘
+                                    │                    │
+                    ┌───────────────┼──────┐    ┌───────┼───────┐
+                    ▼               ▼      ▼    ▼       ▼       ▼
+              ┌──────────┐   ┌────────┐ ┌────────┐ ┌────────┐ ┌──────────┐
+              │  Azure   │   │  AWS   │ │  GCP   │ │Azure DI│ │Tesseract │
+              │ Foundry  │   │Bedrock │ │ Vertex │ │  OCR   │ │ Local/AWS│
+              └──────────┘   └────────┘ └────────┘ └────────┘ └──────────┘
+                    ▲
+                    │ (またはローカル)
+              ┌──────────┐
+              │  Ollama  │
+              └──────────┘
 ```
 
 ## 対応LLMモデル
 
-| プロバイダー | モデル | 説明 |
-|-------------|--------|------|
-| **Azure Foundry** | GPT-5.2 | 最新のGPT-5シリーズ |
-| | GPT-5-nano | 軽量高速モデル |
-| | Claude Sonnet 4 | Anthropic Claude（Azure経由） |
-| | Claude Opus 4 | 高性能Claudeモデル |
-| **AWS Bedrock** | Claude Sonnet 4.6 | 最新Claude Sonnet |
-| | Claude Opus 4 | 高性能Claudeモデル |
-| **GCP Vertex AI** | Gemini 3.0 Flash Preview | 高速Geminiモデル |
-| | Gemini 3.0 Pro Preview | 高性能Geminiモデル |
+| プロバイダー | モデル | ティア | 説明 |
+|-------------|--------|--------|------|
+| **Azure AI Foundry** | GPT-5.2 | precision | 最新のGPT-5シリーズ |
+| | GPT-5.2-codex | precision | コード特化モデル |
+| | claude-opus-4-6 | precision | Anthropic最高性能 |
+| | GPT-5-mini | balanced | バランス型 |
+| | claude-sonnet-4-5 | balanced | 高速・高品質 |
+| | GPT-5-nano | cost_effective | 軽量高速モデル |
+| | claude-haiku-4-5 | cost_effective | 最速レスポンス |
+| **AWS Bedrock** | claude-opus-4-6 | precision | 最高性能 |
+| | amazon.nova-premier | precision | Amazon最高性能 |
+| | claude-sonnet-4-5 | balanced | 高速・高品質 |
+| | amazon.nova-pro | balanced | Amazonバランス型 |
+| | meta.llama4-maverick | balanced | Meta Llama 4 |
+| | claude-haiku-4-5 | cost_effective | 最速レスポンス |
+| | amazon.nova-micro | cost_effective | 最軽量 |
+| **GCP Vertex AI** | gemini-3-pro-preview | precision | Google最高性能 |
+| | claude-opus-4-6 | precision | 最高性能 |
+| | gemini-3-flash-preview | balanced | 高速Gemini |
+| | claude-sonnet-4-5 | balanced | 高速・高品質 |
+| | claude-haiku-4-5 | cost_effective | 最速レスポンス |
+| **Ollama（ローカル）** | qwen2.5:3b | balanced | 多言語対応（無料） |
+| | gemma-2-2b-jpn-it | cost_effective | 日本語最適化（無料） |
 
 ## 必要条件
 
 - Python 3.11以上
-- Node.js 18以上
+- Node.js 20以上
 - 以下のいずれかのLLMプロバイダー:
-  - Azure OpenAI Service / Azure Foundry
+  - Azure AI Foundry
   - AWS Bedrock
   - GCP Vertex AI
-- Azure Document Intelligence（OCR用、オプション）
+  - Ollama（ローカル、無料）
+- OCRプロバイダー（オプション）: Azure Document Intelligence / Tesseract / AWS Tesseract
 
 ## クイックスタート（Windows推奨）
 
@@ -101,26 +121,35 @@ cd ai-policy-reviewer
 
 ```env
 # LLMプロバイダー選択
-LLM_PROVIDER=azure  # azure, aws_bedrock, gcp_vertex
-LLM_MODEL=gpt-5.2
+LLM_PROVIDER=azure  # azure, aws_bedrock, gcp_vertex, local
+LLM_MODEL=gpt-5-2
+# LLM_TIER=balanced  # precision, balanced, cost_effective（オプション）
 
-# Azure Foundry / OpenAI
+# Azure AI Foundry
 AZURE_OPENAI_ENDPOINT=https://<your-resource>.openai.azure.com/
 AZURE_OPENAI_API_KEY=<your-api-key>
 AZURE_OPENAI_DEPLOYMENT=gpt-5-2
+AZURE_OPENAI_USE_V1_API=true
 AZURE_OPENAI_EMBEDDING_DEPLOYMENT=text-embedding-3-large
 
 # AWS Bedrock（オプション）
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=<your-access-key>
 AWS_SECRET_ACCESS_KEY=<your-secret-key>
-AWS_BEDROCK_MODEL_ID=anthropic.claude-sonnet-4-6
+AWS_BEDROCK_MODEL_ID=us.anthropic.claude-sonnet-4-5-20250929-v1:0
 
 # GCP Vertex AI（オプション）
 GCP_PROJECT_ID=<your-project-id>
-GCP_LOCATION=us-central1
+GCP_LOCATION=global
 GCP_CREDENTIALS_PATH=/path/to/service-account.json
-GCP_VERTEX_MODEL=gemini-3.0-flash-preview
+GCP_VERTEX_MODEL=gemini-3-flash-preview
+
+# Ollama ローカルLLM（オプション、無料）
+# OLLAMA_BASE_URL=http://localhost:11434
+# OLLAMA_MODEL=qwen2.5:3b
+
+# OCR設定
+# OCR_PROVIDER=azure_doc_intel  # azure_doc_intel, tesseract, aws_tesseract
 
 # Azure Document Intelligence
 AZURE_DOC_INTEL_ENDPOINT=https://<your-resource>.cognitiveservices.azure.com/
@@ -320,8 +349,8 @@ Proprietary License - Copyright (c) 2024-2026 Go Yoshizawa. All Rights Reserved.
 
 環境変数で切り替え:
 ```env
-LLM_PROVIDER=aws_bedrock  # azure, aws_bedrock, gcp_vertex
-LLM_MODEL=anthropic.claude-sonnet-4-6
+LLM_PROVIDER=aws_bedrock  # azure, aws_bedrock, gcp_vertex, local
+LLM_MODEL=us.anthropic.claude-sonnet-4-5-20250929-v1:0
 ```
 
 または、APIで動的に切り替え（開発中）。
