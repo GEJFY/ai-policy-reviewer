@@ -84,7 +84,7 @@ resource "azurerm_container_app" "backend" {
 
   # シークレット
   dynamic "secret" {
-    for_each = var.backend_secrets
+    for_each = nonsensitive(var.backend_secrets)
     content {
       name  = secret.key
       value = secret.value

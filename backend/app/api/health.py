@@ -10,7 +10,7 @@ Kubernetesプローブおよび監視用のヘルスチェックエンドポイ�
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
@@ -18,7 +18,7 @@ from sqlalchemy import text
 
 from app.db.database import get_db
 from app.config import settings
-from app.core.resilience.circuit_breaker import get_all_breakers, CircuitState
+from app.core.resilience.circuit_breaker import get_all_breakers
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +27,7 @@ router = APIRouter()
 
 class HealthStatus:
     """ヘルスステータス定数"""
+
     HEALTHY = "healthy"
     UNHEALTHY = "unhealthy"
     DEGRADED = "degraded"
@@ -120,8 +121,7 @@ async def detailed_health_check(
 
     unhealthy_count = sum(1 for c in checks.values() if not c["healthy"])
     degraded_count = sum(
-        1 for cb in circuit_breakers.values()
-        if cb["state"] in ["open", "half_open"]
+        1 for cb in circuit_breakers.values() if cb["state"] in ["open", "half_open"]
     )
 
     if unhealthy_count > 0:
@@ -140,11 +140,15 @@ async def detailed_health_check(
         "circuit_breakers": circuit_breakers,
         "configuration": {
             "llm_provider": settings.llm_provider.value,
-            "llm_model": settings.llm_model,
+            "llm_model": settings.get_effective_model(),
+            "llm_tier": settings.llm_tier.value if settings.llm_tier else None,
             "azure_openai_configured": settings.is_azure_configured(),
             "aws_bedrock_configured": settings.is_bedrock_configured(),
             "gcp_vertex_configured": settings.is_vertex_configured(),
-            "azure_doc_intel_configured": bool(settings.azure_doc_intel_endpoint),
+            "ollama_configured": settings.is_ollama_configured(),
+            "ocr_provider": settings.ocr_provider.value,
+            "azure_doc_intel_configured": settings.is_doc_intel_configured(),
+            "tesseract_configured": settings.is_tesseract_configured(),
         },
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
@@ -174,17 +178,22 @@ async def system_info():
         "version": "0.2.0",
         "debug": settings.debug,
         "llm_provider": settings.llm_provider.value,
-        "llm_model": settings.llm_model,
+        "llm_model": settings.get_effective_model(),
+        "llm_tier": settings.llm_tier.value if settings.llm_tier else None,
         "azure_openai_configured": settings.is_azure_configured(),
         "aws_bedrock_configured": settings.is_bedrock_configured(),
         "gcp_vertex_configured": settings.is_vertex_configured(),
-        "azure_doc_intel_configured": bool(settings.azure_doc_intel_endpoint),
+        "ollama_configured": settings.is_ollama_configured(),
+        "ocr_provider": settings.ocr_provider.value,
+        "azure_doc_intel_configured": settings.is_doc_intel_configured(),
+        "tesseract_configured": settings.is_tesseract_configured(),
     }
 
 
 # =============================================================================
 # Internal Health Check Functions
 # =============================================================================
+
 
 async def _check_database(db: Session) -> Dict[str, Any]:
     """データベース接続をチェック"""
@@ -212,7 +221,11 @@ async def _check_llm_service() -> Dict[str, Any]:
 
         return {
             "healthy": available,
-            "active_provider": llm_service.active_provider.value if llm_service.active_provider else None,
+            "active_provider": (
+                llm_service.active_provider.value
+                if llm_service.active_provider
+                else None
+            ),
             "available_providers": [p.value for p in providers],
         }
     except Exception as e:
@@ -224,22 +237,34 @@ async def _check_llm_service() -> Dict[str, Any]:
 
 
 async def _check_ocr_service() -> Dict[str, Any]:
-    """OCRサービス（Azure Document Intelligence）の状態をチェック"""
-    configured = bool(settings.azure_doc_intel_endpoint and settings.azure_doc_intel_key)
+    """OCRサービスの状態をチェック（マルチプロバイダー対応）"""
+    try:
+        from app.services.ocr_service import ocr_service, OCRServiceFactory
 
-    if not configured:
+        active_provider = settings.ocr_provider.value
+        available_providers = [
+            p.value for p in OCRServiceFactory.get_available_providers()
+        ]
+        is_available = ocr_service.is_available()
+
         return {
-            "healthy": True,  # 未設定でもアプリは動作可能
-            "configured": False,
-            "note": "OCR service not configured, PDF extraction may be limited",
+            "healthy": True,  # OCR未設定でもアプリは動作可能
+            "active_provider": active_provider,
+            "available_providers": available_providers,
+            "configured": is_available,
+            "note": (
+                None
+                if is_available
+                else "OCR service not configured, PDF extraction may be limited"
+            ),
         }
-
-    # 実際の接続テストはコストがかかるため、設定の有無のみチェック
-    return {
-        "healthy": True,
-        "configured": True,
-        "endpoint": settings.azure_doc_intel_endpoint[:50] + "..." if settings.azure_doc_intel_endpoint else None,
-    }
+    except Exception as e:
+        logger.warning(f"OCR service health check failed: {str(e)}")
+        return {
+            "healthy": True,
+            "configured": False,
+            "error": str(e)[:100],
+        }
 
 
 def _get_circuit_breaker_status() -> Dict[str, Any]:

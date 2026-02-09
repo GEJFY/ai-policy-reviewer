@@ -17,12 +17,16 @@ class Document(Base):
     file_path = Column(String(1000), nullable=False)
     file_type = Column(String(50))  # pdf, docx, etc.
     extracted_text = Column(Text)
-    ocr_status = Column(String(20), default="pending")  # pending/processing/completed/failed
+    ocr_status = Column(
+        String(20), default="pending"
+    )  # pending/processing/completed/failed
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     # Relationships
-    chunks = relationship("DocumentChunk", back_populates="document", cascade="all, delete-orphan")
+    chunks = relationship(
+        "DocumentChunk", back_populates="document", cascade="all, delete-orphan"
+    )
     reviews = relationship("Review", back_populates="document")
 
     def __repr__(self):

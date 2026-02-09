@@ -17,7 +17,6 @@ from app.schemas.term import (
 from app.services.embedding_service import embedding_service
 from app.services.vector_store import vector_store
 
-
 router = APIRouter(prefix="/api/v1/terms", tags=["Terms"])
 
 
@@ -126,7 +125,9 @@ async def update_term(
         setattr(db_term, field, value)
 
     # Regenerate embedding if term or definition changed
-    if ("term" in update_data or "definition" in update_data) and embedding_service.is_available():
+    if (
+        "term" in update_data or "definition" in update_data
+    ) and embedding_service.is_available():
         try:
             embed_text = f"{db_term.term}: {db_term.definition}"
             embedding = await embedding_service.get_embedding(embed_text)
@@ -198,9 +199,7 @@ async def search_terms(
 
 
 @router.post("/bulk", response_model=list[TermResponse], status_code=201)
-async def bulk_create_terms(
-    request: TermBulkCreate, db: Session = Depends(get_db)
-):
+async def bulk_create_terms(request: TermBulkCreate, db: Session = Depends(get_db)):
     """Create multiple terms at once."""
     created_terms = []
 

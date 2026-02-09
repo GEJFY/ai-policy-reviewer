@@ -13,7 +13,6 @@ from app.schemas.writing_rule import (
     RuleType,
 )
 
-
 router = APIRouter(prefix="/api/v1/writing-rules", tags=["Writing Rules"])
 
 
@@ -40,10 +39,7 @@ async def list_writing_rules(
 @router.get("/types")
 async def get_rule_types():
     """Get list of available rule types."""
-    return [
-        {"value": rt.value, "label": _get_type_label(rt)}
-        for rt in RuleType
-    ]
+    return [{"value": rt.value, "label": _get_type_label(rt)} for rt in RuleType]
 
 
 @router.get("/{rule_id}", response_model=WritingRuleResponse)

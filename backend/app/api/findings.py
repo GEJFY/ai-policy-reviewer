@@ -12,9 +12,7 @@ from app.schemas.finding import (
     FindingApprovalRequest,
     BulkApprovalRequest,
     FindingSummary,
-    FindingStatus,
 )
-
 
 router = APIRouter(prefix="/api/v1", tags=["Findings"])
 
@@ -51,7 +49,9 @@ async def get_findings_summary(review_id: int, db: Session = Depends(get_db)):
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
 
-    findings = db.query(ReviewFinding).filter(ReviewFinding.review_id == review_id).all()
+    findings = (
+        db.query(ReviewFinding).filter(ReviewFinding.review_id == review_id).all()
+    )
 
     return FindingSummary(
         total_findings=len(findings),
@@ -137,7 +137,9 @@ async def defer_finding(
     return finding
 
 
-@router.post("/reviews/{review_id}/findings/bulk-approve", response_model=list[FindingResponse])
+@router.post(
+    "/reviews/{review_id}/findings/bulk-approve", response_model=list[FindingResponse]
+)
 async def bulk_approve_findings(
     review_id: int,
     request: BulkApprovalRequest,

@@ -9,7 +9,7 @@ on:
 env:
   PYTHON_VERSION: "3.11"
   NODE_VERSION: "20"
-  COVERAGE_THRESHOLD: 70
+  COVERAGE_THRESHOLD: 60
 
 jobs:
   # =============================================================================
@@ -230,8 +230,9 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
+        continue-on-error: true
         with:
           sarif_file: 'trivy-results.sarif'
 

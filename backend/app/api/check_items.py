@@ -13,7 +13,6 @@ from app.schemas.check_item import (
     CheckCategory,
 )
 
-
 router = APIRouter(prefix="/api/v1/check-items", tags=["Check Items"])
 
 
@@ -41,8 +40,7 @@ async def list_check_items(
 async def get_categories():
     """Get list of available check item categories."""
     return [
-        {"value": cat.value, "label": _get_category_label(cat)}
-        for cat in CheckCategory
+        {"value": cat.value, "label": _get_category_label(cat)} for cat in CheckCategory
     ]
 
 
@@ -56,9 +54,7 @@ async def get_check_item(item_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=CheckItemResponse, status_code=201)
-async def create_check_item(
-    item_data: CheckItemCreate, db: Session = Depends(get_db)
-):
+async def create_check_item(item_data: CheckItemCreate, db: Session = Depends(get_db)):
     """Create a new check item."""
     db_item = CheckItem(
         name=item_data.name,

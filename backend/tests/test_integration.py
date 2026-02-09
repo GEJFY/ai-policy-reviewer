@@ -14,7 +14,6 @@ from app.main import app
 from app.db.database import get_db
 from app.models.base import Base
 
-
 # Test database setup
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 engine = create_engine(
@@ -46,6 +45,7 @@ def db_session():
 @pytest.fixture
 def client(db_session):
     """Create a test client with database override."""
+
     def override_get_db():
         try:
             yield db_session
@@ -65,9 +65,21 @@ class TestMasterDataWorkflow:
         """用語辞書の作成と利用のワークフロー"""
         # 1. 複数の用語を一括登録
         terms = [
-            {"term": "従業員", "definition": "当社と雇用契約を締結した者", "category": "人事"},
-            {"term": "正社員", "definition": "期間の定めのない雇用契約を締結した従業員", "category": "人事"},
-            {"term": "契約社員", "definition": "期間の定めのある雇用契約を締結した従業員", "category": "人事"},
+            {
+                "term": "従業員",
+                "definition": "当社と雇用契約を締結した者",
+                "category": "人事",
+            },
+            {
+                "term": "正社員",
+                "definition": "期間の定めのない雇用契約を締結した従業員",
+                "category": "人事",
+            },
+            {
+                "term": "契約社員",
+                "definition": "期間の定めのある雇用契約を締結した従業員",
+                "category": "人事",
+            },
         ]
         response = client.post("/api/v1/terms/bulk", json={"terms": terms})
         assert response.status_code == 201
@@ -92,8 +104,7 @@ class TestMasterDataWorkflow:
         # 4. 用語を更新
         term_id = data[0]["id"]
         response = client.put(
-            f"/api/v1/terms/{term_id}",
-            json={"aliases": ["社員", "スタッフ"]}
+            f"/api/v1/terms/{term_id}", json={"aliases": ["社員", "スタッフ"]}
         )
         assert response.status_code == 200
 
@@ -111,21 +122,21 @@ class TestMasterDataWorkflow:
                 "category": "TERMINOLOGY",
                 "description": "社内用語の統一性を確認",
                 "severity": "HIGH",
-                "is_active": True
+                "is_active": True,
             },
             {
                 "name": "文体統一チェック",
                 "category": "GRAMMAR",
                 "description": "である体で統一されているか確認",
                 "severity": "MEDIUM",
-                "is_active": True
+                "is_active": True,
             },
             {
                 "name": "法的要件チェック",
                 "category": "COMPLIANCE",
                 "description": "労働基準法の要件を満たしているか確認",
                 "severity": "HIGH",
-                "is_active": False  # 無効化
+                "is_active": False,  # 無効化
             },
         ]
 
@@ -150,8 +161,7 @@ class TestMasterDataWorkflow:
 
         # 4. チェック項目を有効化
         response = client.put(
-            f"/api/v1/check-items/{created_ids[2]}",
-            json={"is_active": True}
+            f"/api/v1/check-items/{created_ids[2]}", json={"is_active": True}
         )
         assert response.status_code == 200
 
@@ -242,7 +252,7 @@ class TestReviewWorkflow:
         # 存在しない文書でレビュー作成を試みる
         response = client.post(
             "/api/v1/reviews",
-            json={"document_id": 999, "check_item_ids": [check_item_id]}
+            json={"document_id": 999, "check_item_ids": [check_item_id]},
         )
         assert response.status_code == 404
 
@@ -250,8 +260,7 @@ class TestReviewWorkflow:
         """レビュー作成にはチェック項目が必要"""
         # チェック項目なしでレビュー作成を試みる
         response = client.post(
-            "/api/v1/reviews",
-            json={"document_id": 1, "check_item_ids": []}
+            "/api/v1/reviews", json={"document_id": 1, "check_item_ids": []}
         )
         assert response.status_code == 422  # Validation error
 
@@ -263,11 +272,14 @@ class TestPaginationAndFiltering:
         """用語のページネーション"""
         # 15件の用語を作成
         for i in range(15):
-            client.post("/api/v1/terms", json={
-                "term": f"用語{i+1:02d}",
-                "definition": f"定義{i+1}",
-                "category": "一般"
-            })
+            client.post(
+                "/api/v1/terms",
+                json={
+                    "term": f"用語{i+1:02d}",
+                    "definition": f"定義{i+1}",
+                    "category": "一般",
+                },
+            )
 
         # デフォルトのページサイズ（上限100）
         response = client.get("/api/v1/terms")
@@ -292,12 +304,15 @@ class TestPaginationAndFiltering:
         # 異なるカテゴリのチェック項目を作成
         categories = ["TERMINOLOGY", "GRAMMAR", "COMPLIANCE", "TERMINOLOGY"]
         for i, cat in enumerate(categories):
-            client.post("/api/v1/check-items", json={
-                "name": f"チェック{i+1}",
-                "category": cat,
-                "description": f"説明{i+1}",
-                "severity": "MEDIUM"
-            })
+            client.post(
+                "/api/v1/check-items",
+                json={
+                    "name": f"チェック{i+1}",
+                    "category": cat,
+                    "description": f"説明{i+1}",
+                    "severity": "MEDIUM",
+                },
+            )
 
         # カテゴリフィルタ
         response = client.get("/api/v1/check-items?category=TERMINOLOGY")
@@ -322,18 +337,16 @@ class TestConcurrentOperations:
     def test_concurrent_term_updates(self, client: TestClient):
         """用語の並行更新"""
         # 用語を作成
-        response = client.post("/api/v1/terms", json={
-            "term": "テスト用語",
-            "definition": "初期定義",
-            "category": "一般"
-        })
+        response = client.post(
+            "/api/v1/terms",
+            json={"term": "テスト用語", "definition": "初期定義", "category": "一般"},
+        )
         term_id = response.json()["id"]
 
         # 複数回更新
         for i in range(5):
             response = client.put(
-                f"/api/v1/terms/{term_id}",
-                json={"definition": f"定義バージョン{i+1}"}
+                f"/api/v1/terms/{term_id}", json={"definition": f"定義バージョン{i+1}"}
             )
             assert response.status_code == 200
 
@@ -358,11 +371,10 @@ class TestAPIResponseFormats:
     def test_detail_response_format(self, client: TestClient):
         """詳細レスポンスの形式"""
         # 用語を作成
-        response = client.post("/api/v1/terms", json={
-            "term": "テスト",
-            "definition": "テスト定義",
-            "category": "一般"
-        })
+        response = client.post(
+            "/api/v1/terms",
+            json={"term": "テスト", "definition": "テスト定義", "category": "一般"},
+        )
         term_id = response.json()["id"]
 
         # 詳細を取得
@@ -422,11 +434,14 @@ class TestCRUDOperations:
     def test_term_crud_complete(self, client: TestClient):
         """用語のCRUD操作"""
         # Create
-        response = client.post("/api/v1/terms", json={
-            "term": "CRUD用語",
-            "definition": "CRUD操作テスト用",
-            "category": "テスト"
-        })
+        response = client.post(
+            "/api/v1/terms",
+            json={
+                "term": "CRUD用語",
+                "definition": "CRUD操作テスト用",
+                "category": "テスト",
+            },
+        )
         assert response.status_code == 201
         term_id = response.json()["id"]
 
@@ -436,9 +451,9 @@ class TestCRUDOperations:
         assert response.json()["term"] == "CRUD用語"
 
         # Update
-        response = client.put(f"/api/v1/terms/{term_id}", json={
-            "definition": "更新後の定義"
-        })
+        response = client.put(
+            f"/api/v1/terms/{term_id}", json={"definition": "更新後の定義"}
+        )
         assert response.status_code == 200
         assert response.json()["definition"] == "更新後の定義"
 
@@ -453,12 +468,15 @@ class TestCRUDOperations:
     def test_check_item_crud_complete(self, client: TestClient):
         """チェック項目のCRUD操作"""
         # Create
-        response = client.post("/api/v1/check-items", json={
-            "name": "CRUDチェック",
-            "category": "TERMINOLOGY",
-            "description": "CRUD操作テスト用",
-            "severity": "MEDIUM"
-        })
+        response = client.post(
+            "/api/v1/check-items",
+            json={
+                "name": "CRUDチェック",
+                "category": "TERMINOLOGY",
+                "description": "CRUD操作テスト用",
+                "severity": "MEDIUM",
+            },
+        )
         assert response.status_code == 201
         item_id = response.json()["id"]
 
@@ -468,9 +486,9 @@ class TestCRUDOperations:
         assert response.json()["name"] == "CRUDチェック"
 
         # Update
-        response = client.put(f"/api/v1/check-items/{item_id}", json={
-            "severity": "HIGH"
-        })
+        response = client.put(
+            f"/api/v1/check-items/{item_id}", json={"severity": "HIGH"}
+        )
         assert response.status_code == 200
         assert response.json()["severity"] == "HIGH"
 
@@ -485,11 +503,14 @@ class TestCRUDOperations:
     def test_writing_rule_crud_complete(self, client: TestClient):
         """記載ルールのCRUD操作"""
         # Create
-        response = client.post("/api/v1/writing-rules", json={
-            "name": "CRUDルール",
-            "rule_type": "STYLE",
-            "correct_form": "正しい形式"
-        })
+        response = client.post(
+            "/api/v1/writing-rules",
+            json={
+                "name": "CRUDルール",
+                "rule_type": "STYLE",
+                "correct_form": "正しい形式",
+            },
+        )
         assert response.status_code == 201
         rule_id = response.json()["id"]
 
@@ -499,9 +520,9 @@ class TestCRUDOperations:
         assert response.json()["name"] == "CRUDルール"
 
         # Update
-        response = client.put(f"/api/v1/writing-rules/{rule_id}", json={
-            "correct_form": "更新後の形式"
-        })
+        response = client.put(
+            f"/api/v1/writing-rules/{rule_id}", json={"correct_form": "更新後の形式"}
+        )
         assert response.status_code == 200
         assert response.json()["correct_form"] == "更新後の形式"
 

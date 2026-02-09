@@ -9,10 +9,10 @@ import asyncio
 import logging
 import time
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 
-from fastapi import Request, HTTPException, status
+from fastapi import Request
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class RateLimitConfig:
     """レート制限設定"""
+
     requests: int  # 許可するリクエスト数
     window_seconds: int  # ウィンドウ期間（秒）
     burst: int = 0  # バースト許容数（0の場合requestsと同じ）
@@ -32,6 +33,7 @@ class RateLimitConfig:
 @dataclass
 class RateLimitState:
     """レート制限状態"""
+
     tokens: float  # 現在のトークン数
     last_update: float  # 最終更新時刻
     request_count: int = 0  # 総リクエスト数
@@ -43,20 +45,16 @@ RATE_LIMITS: Dict[str, RateLimitConfig] = {
     "/api/v1/auth/login": RateLimitConfig(requests=5, window_seconds=60),
     "/api/v1/auth/register": RateLimitConfig(requests=3, window_seconds=60),
     "/api/v1/auth/password-reset": RateLimitConfig(requests=3, window_seconds=60),
-
     # ドキュメント操作
     "/api/v1/documents/upload": RateLimitConfig(requests=10, window_seconds=60),
     "/api/v1/documents": RateLimitConfig(requests=30, window_seconds=60),
-
     # レビュー操作（LLM呼び出しを含むため）
     "/api/v1/reviews": RateLimitConfig(requests=20, window_seconds=60),
     "/api/v1/reviews/{id}/start": RateLimitConfig(requests=5, window_seconds=60),
-
     # マスタデータ
     "/api/v1/terms": RateLimitConfig(requests=60, window_seconds=60),
     "/api/v1/check-items": RateLimitConfig(requests=60, window_seconds=60),
     "/api/v1/writing-rules": RateLimitConfig(requests=60, window_seconds=60),
-
     # デフォルト
     "default": RateLimitConfig(requests=100, window_seconds=60),
 }
@@ -112,7 +110,9 @@ class RateLimiter:
 
         return f"{client_ip}:{request.url.path}"
 
-    async def _refill_tokens(self, state: RateLimitState, config: RateLimitConfig) -> None:
+    async def _refill_tokens(
+        self, state: RateLimitState, config: RateLimitConfig
+    ) -> None:
         """トークンを補充"""
         now = time.time()
         elapsed = now - state.last_update
@@ -162,12 +162,16 @@ class RateLimiter:
             headers = {
                 "X-RateLimit-Limit": str(config.requests),
                 "X-RateLimit-Remaining": str(max(0, int(state.tokens) - 1)),
-                "X-RateLimit-Reset": str(int(state.last_update + config.window_seconds)),
+                "X-RateLimit-Reset": str(
+                    int(state.last_update + config.window_seconds)
+                ),
             }
 
             # トークンチェック
             if state.tokens < 1:
-                retry_after = int(config.window_seconds - (time.time() - state.last_update))
+                retry_after = int(
+                    config.window_seconds - (time.time() - state.last_update)
+                )
                 headers["Retry-After"] = str(max(1, retry_after))
                 logger.warning(
                     f"Rate limit exceeded | key={key} | path={request.url.path} | "
@@ -189,7 +193,8 @@ class RateLimiter:
 
         # 期限切れの状態を削除
         expired_keys = [
-            key for key, state in self._states.items()
+            key
+            for key, state in self._states.items()
             if now - state.last_update > 3600  # 1時間経過
         ]
 
@@ -205,8 +210,10 @@ class RateLimiter:
         """統計情報を取得"""
         return {
             "total_keys": len(self._states),
-            "configs": {k: {"requests": v.requests, "window": v.window_seconds}
-                       for k, v in RATE_LIMITS.items()},
+            "configs": {
+                k: {"requests": v.requests, "window": v.window_seconds}
+                for k, v in RATE_LIMITS.items()
+            },
         }
 
 
@@ -232,12 +239,20 @@ class RateLimitMiddleware:
 
         # 静的ファイルやヘルスチェックは除外
         path = scope["path"]
-        if path in ["/health", "/health/live", "/health/ready", "/metrics", "/docs", "/openapi.json"]:
+        if path in [
+            "/health",
+            "/health/live",
+            "/health/ready",
+            "/metrics",
+            "/docs",
+            "/openapi.json",
+        ]:
             await self.app(scope, receive, send)
             return
 
         # モックリクエストオブジェクト作成
         from starlette.requests import Request as StarletteRequest
+
         request = StarletteRequest(scope, receive)
 
         # レート制限チェック
@@ -250,15 +265,19 @@ class RateLimitMiddleware:
                 *[(k.lower().encode(), str(v).encode()) for k, v in headers.items()],
             ]
 
-            await send({
-                "type": "http.response.start",
-                "status": 429,
-                "headers": response_headers,
-            })
-            await send({
-                "type": "http.response.body",
-                "body": b'{"detail": "Too many requests. Please try again later."}',
-            })
+            await send(
+                {
+                    "type": "http.response.start",
+                    "status": 429,
+                    "headers": response_headers,
+                }
+            )
+            await send(
+                {
+                    "type": "http.response.body",
+                    "body": b'{"detail": "Too many requests. Please try again later."}',
+                }
+            )
             return
 
         # レート制限ヘッダーを追加してレスポンス

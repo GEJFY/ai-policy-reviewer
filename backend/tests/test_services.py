@@ -5,8 +5,7 @@ Service layer unit tests.
 ビジネスロジックと外部サービス連携のテスト。
 """
 
-import pytest
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import patch
 
 from app.services.chunking_service import ChunkingService
 from app.services.embedding_service import EmbeddingService
@@ -77,7 +76,9 @@ class TestEmbeddingService:
         with patch.dict("os.environ", {}, clear=True):
             service = EmbeddingService()
             # Azure OpenAIの設定がない場合は利用不可
-            assert service.is_available() is False or service.is_available() is True  # 環境による
+            assert (
+                service.is_available() is False or service.is_available() is True
+            )  # 環境による
 
     def test_embedding_to_bytes(self):
         """埋め込みベクトルのバイト変換。"""

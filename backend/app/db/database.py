@@ -6,7 +6,6 @@ from typing import Generator
 
 from app.config import settings
 
-
 # Create engine
 # For SQLite, connect_args is needed for multi-threading support
 connect_args = {}

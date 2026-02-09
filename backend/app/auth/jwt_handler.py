@@ -25,6 +25,7 @@ ALGORITHM = "HS256"
 
 class TokenPayload(BaseModel):
     """トークンペイロード"""
+
     sub: str  # ユーザーID
     exp: datetime  # 有効期限
     iat: datetime  # 発行時刻
@@ -34,6 +35,7 @@ class TokenPayload(BaseModel):
 
 class TokenPair(BaseModel):
     """アクセストークンとリフレッシュトークンのペア"""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
@@ -89,7 +91,9 @@ class JWTHandler:
         }
 
         token = jwt.encode(payload, self.secret_key, algorithm=ALGORITHM)
-        logger.debug(f"Access token created | user_id={user_id} | expires={expire.isoformat()}")
+        logger.debug(
+            f"Access token created | user_id={user_id} | expires={expire.isoformat()}"
+        )
         return token
 
     def create_refresh_token(
@@ -119,7 +123,9 @@ class JWTHandler:
         }
 
         token = jwt.encode(payload, self.secret_key, algorithm=ALGORITHM)
-        logger.debug(f"Refresh token created | user_id={user_id} | expires={expire.isoformat()}")
+        logger.debug(
+            f"Refresh token created | user_id={user_id} | expires={expire.isoformat()}"
+        )
         return token
 
     def create_token_pair(
@@ -146,7 +152,9 @@ class JWTHandler:
             expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
 
-    def verify_token(self, token: str, expected_type: str = "access") -> Optional[TokenPayload]:
+    def verify_token(
+        self, token: str, expected_type: str = "access"
+    ) -> Optional[TokenPayload]:
         """
         トークンを検証。
 
@@ -163,7 +171,9 @@ class JWTHandler:
             # トークンタイプを検証
             token_type = payload.get("type")
             if token_type != expected_type:
-                logger.warning(f"Token type mismatch | expected={expected_type} | got={token_type}")
+                logger.warning(
+                    f"Token type mismatch | expected={expected_type} | got={token_type}"
+                )
                 return None
 
             return TokenPayload(
@@ -181,7 +191,9 @@ class JWTHandler:
             logger.warning(f"Token verification failed | error={str(e)}")
             return None
 
-    def refresh_access_token(self, refresh_token: str, roles: list[str] = None) -> Optional[str]:
+    def refresh_access_token(
+        self, refresh_token: str, roles: list[str] = None
+    ) -> Optional[str]:
         """
         リフレッシュトークンを使用して新しいアクセストークンを生成。
 
@@ -209,7 +221,12 @@ class JWTHandler:
             dict: デコードされたペイロード
         """
         try:
-            return jwt.decode(token, self.secret_key, algorithms=[ALGORITHM], options={"verify_exp": False})
+            return jwt.decode(
+                token,
+                self.secret_key,
+                algorithms=[ALGORITHM],
+                options={"verify_exp": False},
+            )
         except JWTError:
             return None
 

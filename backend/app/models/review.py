@@ -14,17 +14,25 @@ class Review(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     document_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
-    status = Column(String(20), default="pending")  # pending/processing/completed/failed
+    status = Column(
+        String(20), default="pending"
+    )  # pending/processing/completed/failed
     created_at = Column(DateTime, server_default=func.now())
     completed_at = Column(DateTime)
 
     # Relationships
     document = relationship("Document", back_populates="reviews")
-    check_items = relationship("ReviewCheckItem", back_populates="review", cascade="all, delete-orphan")
-    findings = relationship("ReviewFinding", back_populates="review", cascade="all, delete-orphan")
+    check_items = relationship(
+        "ReviewCheckItem", back_populates="review", cascade="all, delete-orphan"
+    )
+    findings = relationship(
+        "ReviewFinding", back_populates="review", cascade="all, delete-orphan"
+    )
 
     def __repr__(self):
-        return f"<Review(id={self.id}, doc_id={self.document_id}, status='{self.status}')>"
+        return (
+            f"<Review(id={self.id}, doc_id={self.document_id}, status='{self.status}')>"
+        )
 
 
 class ReviewCheckItem(Base):

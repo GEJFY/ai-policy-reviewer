@@ -18,7 +18,6 @@ from app.main import app
 from app.db.database import get_db
 from app.models.base import Base
 
-
 # テスト用インメモリSQLiteデータベース設定
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
@@ -96,7 +95,7 @@ def sample_term_data() -> dict:
         "definition": "当社と雇用契約を締結している者をいう",
         "category": "人事",
         "aliases": ["社員", "スタッフ"],
-        "usage_note": "規程全体で統一して使用すること"
+        "usage_note": "規程全体で統一して使用すること",
     }
 
 
@@ -109,7 +108,7 @@ def sample_check_item_data() -> dict:
         "description": "同一概念に対して統一された用語が使用されているか確認",
         "prompt_template": "文書内で用語の統一性を確認してください。",
         "severity": "HIGH",
-        "is_active": True
+        "is_active": True,
     }
 
 
@@ -122,5 +121,5 @@ def sample_writing_rule_data() -> dict:
         "correct_form": "部長が承認する",
         "example_bad": "部長により承認される",
         "example_good": "部長が承認する",
-        "is_active": True
+        "is_active": True,
     }

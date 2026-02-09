@@ -23,4 +23,6 @@ class WritingRule(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     def __repr__(self):
-        return f"<WritingRule(id={self.id}, name='{self.name}', type='{self.rule_type}')>"
+        return (
+            f"<WritingRule(id={self.id}, name='{self.name}', type='{self.rule_type}')>"
+        )

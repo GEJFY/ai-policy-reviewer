@@ -14,7 +14,16 @@ from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings, validate_and_log_config
-from app.api import auth, health, terms, check_items, writing_rules, documents, reviews, findings
+from app.api import (
+    auth,
+    health,
+    terms,
+    check_items,
+    writing_rules,
+    documents,
+    reviews,
+    findings,
+)
 from app.db.init_db import create_tables
 from app.core.logging_config import init_logging, get_logger
 from app.core.middleware import RequestLoggingMiddleware, add_exception_handlers

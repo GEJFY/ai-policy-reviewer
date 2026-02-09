@@ -7,6 +7,7 @@ from enum import Enum
 
 class OCRStatus(str, Enum):
     """OCR processing status."""
+
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -15,16 +16,19 @@ class OCRStatus(str, Enum):
 
 class DocumentBase(BaseModel):
     """Base schema for Document."""
+
     title: str = Field(..., min_length=1, max_length=500, description="文書タイトル")
 
 
 class DocumentCreate(DocumentBase):
     """Schema for creating a new document (via file upload)."""
+
     pass
 
 
 class DocumentResponse(DocumentBase):
     """Schema for document response."""
+
     id: int
     file_path: str
     file_type: str | None
@@ -39,6 +43,7 @@ class DocumentResponse(DocumentBase):
 
 class DocumentChunkResponse(BaseModel):
     """Schema for document chunk response."""
+
     id: int
     document_id: int
     chunk_index: int
@@ -51,6 +56,7 @@ class DocumentChunkResponse(BaseModel):
 
 class DocumentUploadResponse(BaseModel):
     """Schema for document upload response."""
+
     id: int
     title: str
     file_path: str

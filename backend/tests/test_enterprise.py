@@ -7,17 +7,18 @@ Enterprise feature tests.
 
 import asyncio
 import pytest
-from unittest.mock import AsyncMock, MagicMock
-from datetime import datetime, timezone
 
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.core.resilience.circuit_breaker import CircuitBreaker, CircuitBreakerConfig, CircuitState, CircuitBreakerOpenError
+from app.core.resilience.circuit_breaker import (
+    CircuitBreaker,
+    CircuitBreakerConfig,
+    CircuitState,
+    CircuitBreakerOpenError,
+)
 from app.core.observability.correlation import CorrelationContext
-from app.core.observability.metrics import get_metrics_text, REGISTRY
 from app.core.security.rate_limiter import RateLimiter, RateLimitConfig
-
 
 client = TestClient(app)
 
@@ -25,6 +26,7 @@ client = TestClient(app)
 # =============================================================================
 # Circuit Breaker Tests
 # =============================================================================
+
 
 class TestCircuitBreaker:
     """サーキットブレーカーのテスト"""
@@ -69,7 +71,9 @@ class TestCircuitBreaker:
 
     def test_opens_after_threshold(self):
         """失敗が閾値に達するとOPENになること"""
-        cb = self._make_breaker("test_open_cb", failure_threshold=2, recovery_timeout=60)
+        cb = self._make_breaker(
+            "test_open_cb", failure_threshold=2, recovery_timeout=60
+        )
 
         async def fail_func():
             raise ValueError("test error")
@@ -82,7 +86,9 @@ class TestCircuitBreaker:
 
     def test_open_rejects_calls(self):
         """OPEN状態で呼び出しが拒否されること"""
-        cb = self._make_breaker("test_reject_cb", failure_threshold=1, recovery_timeout=60)
+        cb = self._make_breaker(
+            "test_reject_cb", failure_threshold=1, recovery_timeout=60
+        )
 
         async def fail_func():
             raise ValueError("test error")
@@ -106,7 +112,9 @@ class TestCircuitBreaker:
 
     def test_manual_reset(self):
         """手動リセットが動作すること"""
-        cb = self._make_breaker("test_reset_cb", failure_threshold=1, recovery_timeout=60)
+        cb = self._make_breaker(
+            "test_reset_cb", failure_threshold=1, recovery_timeout=60
+        )
 
         async def fail_func():
             raise ValueError("test error")
@@ -122,6 +130,7 @@ class TestCircuitBreaker:
 # =============================================================================
 # Correlation ID Tests
 # =============================================================================
+
 
 class TestCorrelationContext:
     """相関IDコンテキストのテスト"""
@@ -186,6 +195,7 @@ class TestCorrelationContext:
 # Rate Limiter Tests
 # =============================================================================
 
+
 class TestRateLimiter:
     """レート制限のテスト"""
 
@@ -212,6 +222,7 @@ class TestRateLimiter:
 # =============================================================================
 # Health Check Endpoint Tests
 # =============================================================================
+
 
 class TestHealthEndpoints:
     """ヘルスチェックエンドポイントのテスト"""
@@ -257,6 +268,7 @@ class TestHealthEndpoints:
 # Metrics Endpoint Tests
 # =============================================================================
 
+
 class TestMetricsEndpoint:
     """メトリクスエンドポイントのテスト"""
 
@@ -272,6 +284,7 @@ class TestMetricsEndpoint:
 # =============================================================================
 # Security Headers Tests
 # =============================================================================
+
 
 class TestSecurityHeaders:
     """セキュリティヘッダーのテスト"""
@@ -294,12 +307,15 @@ class TestSecurityHeaders:
     def test_referrer_policy_header(self):
         """Referrer-Policyヘッダーが設定されていること"""
         response = client.get("/health")
-        assert response.headers.get("referrer-policy") == "strict-origin-when-cross-origin"
+        assert (
+            response.headers.get("referrer-policy") == "strict-origin-when-cross-origin"
+        )
 
 
 # =============================================================================
 # Correlation ID Middleware Tests
 # =============================================================================
+
 
 class TestCorrelationMiddleware:
     """相関IDミドルウェアのテスト"""
@@ -311,14 +327,20 @@ class TestCorrelationMiddleware:
 
     def test_custom_request_id_propagated(self):
         """X-Request-IDが伝搬されること"""
-        response = client.get("/health", headers={
-            "X-Request-ID": "custom-request-123",
-        })
+        response = client.get(
+            "/health",
+            headers={
+                "X-Request-ID": "custom-request-123",
+            },
+        )
         assert response.headers.get("x-correlation-id") == "custom-request-123"
 
     def test_custom_correlation_id_propagated(self):
         """X-Correlation-IDが伝搬されること"""
-        response = client.get("/health", headers={
-            "X-Correlation-ID": "custom-corr-456",
-        })
+        response = client.get(
+            "/health",
+            headers={
+                "X-Correlation-ID": "custom-corr-456",
+            },
+        )
         assert response.headers.get("x-correlation-id") == "custom-corr-456"

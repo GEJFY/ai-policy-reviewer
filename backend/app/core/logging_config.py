@@ -3,17 +3,15 @@
 本番運用レベルの構造化ログを提供する
 """
 
-import os
 import sys
 import logging
 import json
 from datetime import datetime, timezone
 from typing import Optional, Any, Dict
-from logging.handlers import RotatingFileHandler, TimedRotatingFileHandler
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from app.config import settings
-
 
 # ============================================================
 # ログディレクトリの設定
@@ -54,11 +52,11 @@ class ColoredFormatter(logging.Formatter):
     """カラー出力フォーマッター（開発環境用）"""
 
     COLORS = {
-        "DEBUG": "\033[36m",      # Cyan
-        "INFO": "\033[32m",       # Green
-        "WARNING": "\033[33m",    # Yellow
-        "ERROR": "\033[31m",      # Red
-        "CRITICAL": "\033[35m",   # Magenta
+        "DEBUG": "\033[36m",  # Cyan
+        "INFO": "\033[32m",  # Green
+        "WARNING": "\033[33m",  # Yellow
+        "ERROR": "\033[31m",  # Red
+        "CRITICAL": "\033[35m",  # Magenta
     }
     RESET = "\033[0m"
 
@@ -101,7 +99,9 @@ def setup_logging(
         # 開発環境用のカラーフォーマット
         console_format = "%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d | %(message)s"
         file_format = "%(asctime)s | %(levelname)-8s | %(name)s:%(funcName)s:%(lineno)d | %(message)s"
-        console_formatter = ColoredFormatter(console_format, datefmt="%Y-%m-%d %H:%M:%S")
+        console_formatter = ColoredFormatter(
+            console_format, datefmt="%Y-%m-%d %H:%M:%S"
+        )
         formatter = logging.Formatter(file_format, datefmt="%Y-%m-%d %H:%M:%S")
 
     # コンソールハンドラー
@@ -227,6 +227,7 @@ class AzureAPILogger:
             str: リクエストID
         """
         import uuid
+
         request_id = str(uuid.uuid4())[:8]
 
         self.logger.info(
@@ -338,9 +339,7 @@ class ReviewLogger:
 
     def error(self, error_message: str) -> None:
         """エラーをログに記録"""
-        self.logger.error(
-            f"Review error | {self._prefix()} | error={error_message}"
-        )
+        self.logger.error(f"Review error | {self._prefix()} | error={error_message}")
 
 
 # ============================================================

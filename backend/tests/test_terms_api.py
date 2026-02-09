@@ -11,7 +11,6 @@ Note:
     - category: カテゴリ
 """
 
-import pytest
 from fastapi.testclient import TestClient
 
 
@@ -53,7 +52,7 @@ class TestTermsAPI:
         required_data = {
             "term": "テスト用語",
             "definition": "テスト用の定義",
-            "category": "一般"
+            "category": "一般",
         }
         response = client.post("/api/v1/terms", json=required_data)
 
@@ -127,7 +126,11 @@ class TestTermsAPI:
         terms = [
             {"term": "従業員", "definition": "テスト", "category": "人事"},
             {"term": "取締役", "definition": "テスト", "category": "人事"},
-            {"term": "機密情報", "definition": "テスト", "category": "情報セキュリティ"},
+            {
+                "term": "機密情報",
+                "definition": "テスト",
+                "category": "情報セキュリティ",
+            },
         ]
         for term in terms:
             client.post("/api/v1/terms", json=term)
@@ -146,11 +149,10 @@ class TestTermsAPI:
         """用語一覧取得（ページネーション）。"""
         # 5件作成（カテゴリは必須）
         for i in range(5):
-            client.post("/api/v1/terms", json={
-                "term": f"用語{i}",
-                "definition": f"定義{i}",
-                "category": "一般"
-            })
+            client.post(
+                "/api/v1/terms",
+                json={"term": f"用語{i}", "definition": f"定義{i}", "category": "一般"},
+            )
 
         # skip=2, limit=2
         response = client.get("/api/v1/terms?skip=2&limit=2")
@@ -175,16 +177,19 @@ class TestTermsAPI:
     def test_bulk_create_terms_skip_duplicates(self, client: TestClient):
         """用語一括作成（重複はスキップ）。"""
         # 事前に1件作成
-        client.post("/api/v1/terms", json={
-            "term": "用語A",
-            "definition": "既存",
-            "category": "一般"
-        })
+        client.post(
+            "/api/v1/terms",
+            json={"term": "用語A", "definition": "既存", "category": "一般"},
+        )
 
         # 重複含む一括作成
         bulk_data = {
             "terms": [
-                {"term": "用語A", "definition": "重複", "category": "一般"},  # スキップされる
+                {
+                    "term": "用語A",
+                    "definition": "重複",
+                    "category": "一般",
+                },  # スキップされる
                 {"term": "用語B", "definition": "新規", "category": "一般"},
             ]
         }
