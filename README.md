@@ -103,6 +103,8 @@ AIを活用した社内規程文書のレビューシステムです。マルチ
 | `start_backend.bat` | バックエンドのみ起動 |
 | `start_frontend.bat` | フロントエンドのみ起動 |
 | `stop_all.bat` | 全サービス停止 |
+| `demo_setup.bat` | デモ環境一括セットアップ（データ投入+PDF生成+起動） |
+| `seed_demo.bat` | デモデータ投入のみ |
 
 ---
 
