@@ -800,9 +800,11 @@ def main():
   - 記載ルール:   {len(WRITING_RULES_DATA)}件
 
 次のステップ:
-  1. サーバーを起動: uvicorn app.main:app --reload
-  2. ブラウザでアクセス: http://localhost:8000/docs
-  3. フロントエンドを起動して操作を確認
+  1. デモ用PDFを生成: python -m scripts.generate_demo_pdfs
+  2. サーバーを起動: start_all.bat（または uvicorn app.main:app --reload --port 8080）
+  3. フロントエンド: http://localhost:3030
+  4. API Docs: http://localhost:8080/docs
+  5. samples/ フォルダのPDFをアップロードしてレビューを実行
 """)
 
     except Exception as e:
