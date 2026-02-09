@@ -560,8 +560,9 @@ class TestOllamaConnectionIntegration:
         try:
             response = await client.generate(messages, max_tokens=50)
         except Exception as e:
-            if "not found" in str(e).lower():
-                pytest.skip(f"Ollama model not available: {e}")
+            err_msg = str(e).lower()
+            if "not found" in err_msg or "connection" in err_msg:
+                pytest.skip(f"Ollama not available: {e}")
             raise
 
         assert response.provider == "local"
