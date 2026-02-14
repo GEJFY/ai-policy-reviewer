@@ -42,11 +42,11 @@ resource "google_sql_database_instance" "main" {
       ipv4_enabled    = false
       private_network = var.vpc_network_id != "" ? var.vpc_network_id : null
     }
+
+    user_labels = var.labels
   }
 
   deletion_protection = var.environment != "dev"
-
-  labels = var.labels
 }
 
 resource "google_sql_database" "main" {

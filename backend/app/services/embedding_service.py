@@ -172,9 +172,11 @@ class GCPVertexEmbeddingClient(BaseEmbeddingClient):
 
             vertexai.init(
                 project=settings.gcp_project_id,
-                location=settings.gcp_location
-                if settings.gcp_location != "global"
-                else "us-central1",
+                location=(
+                    settings.gcp_location
+                    if settings.gcp_location != "global"
+                    else "us-central1"
+                ),
                 credentials=creds,
             )
             self.model = TextEmbeddingModel.from_pretrained(self.model_name)
