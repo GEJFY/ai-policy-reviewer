@@ -8,7 +8,7 @@ Service layer unit tests.
 from unittest.mock import patch
 
 from app.services.chunking_service import ChunkingService
-from app.services.embedding_service import EmbeddingService
+from app.services.embedding_service import UnifiedEmbeddingService
 
 
 class TestChunkingService:
@@ -74,7 +74,7 @@ class TestEmbeddingService:
     def test_is_available_without_config(self):
         """設定なしの場合、利用不可。"""
         with patch.dict("os.environ", {}, clear=True):
-            service = EmbeddingService()
+            service = UnifiedEmbeddingService()
             # Azure OpenAIの設定がない場合は利用不可
             assert (
                 service.is_available() is False or service.is_available() is True
@@ -82,7 +82,7 @@ class TestEmbeddingService:
 
     def test_embedding_to_bytes(self):
         """埋め込みベクトルのバイト変換。"""
-        service = EmbeddingService()
+        service = UnifiedEmbeddingService()
         embedding = [0.1, 0.2, 0.3, 0.4, 0.5]
 
         bytes_data = service.embedding_to_bytes(embedding)
@@ -92,7 +92,7 @@ class TestEmbeddingService:
 
     def test_bytes_to_embedding(self):
         """バイトから埋め込みベクトルへの変換。"""
-        service = EmbeddingService()
+        service = UnifiedEmbeddingService()
         original = [0.1, 0.2, 0.3, 0.4, 0.5]
 
         bytes_data = service.embedding_to_bytes(original)
@@ -106,7 +106,7 @@ class TestEmbeddingService:
 
     def test_embedding_roundtrip(self):
         """埋め込みベクトルの往復変換。"""
-        service = EmbeddingService()
+        service = UnifiedEmbeddingService()
         # 実際の埋め込みサイズに近いベクトル
         original = [float(i) / 1000 for i in range(3072)]
 

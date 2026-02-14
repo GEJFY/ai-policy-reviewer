@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models.term import Term
 from app.models.document import DocumentChunk
-from app.services.embedding_service import EmbeddingService
+from app.services.embedding_service import UnifiedEmbeddingService
 
 
 class VectorStore:
@@ -18,7 +18,7 @@ class VectorStore:
     For production, consider using sqlite-vec extension or Chromadb.
     """
 
-    def __init__(self, embedding_service: Optional[EmbeddingService] = None):
+    def __init__(self, embedding_service: Optional[UnifiedEmbeddingService] = None):
         """Initialize vector store."""
         self.embedding_service = embedding_service
 

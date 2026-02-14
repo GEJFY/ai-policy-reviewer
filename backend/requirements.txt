@@ -7,6 +7,8 @@ python-multipart==0.0.18
 sqlalchemy[asyncio]==2.0.46
 aiosqlite==0.20.0
 greenlet==3.1.1
+alembic==1.14.1
+psycopg2-binary==2.9.10
 
 # Pydantic
 pydantic==2.10.5

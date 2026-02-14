@@ -237,14 +237,17 @@ jobs:
           sarif_file: 'trivy-results.sarif'
 
   # =============================================================================
-  # Terraform Validation
+  # Terraform Validation (Multi-Cloud: Azure, AWS, GCP)
   # =============================================================================
   terraform-validate:
-    name: Terraform Validate
+    name: Terraform Validate (${{ matrix.environment }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [dev, aws-dev, gcp-dev]
     defaults:
       run:
-        working-directory: infrastructure/terraform/environments/dev
+        working-directory: infrastructure/terraform/environments/${{ matrix.environment }}
 
     steps:
       - uses: actions/checkout@v4

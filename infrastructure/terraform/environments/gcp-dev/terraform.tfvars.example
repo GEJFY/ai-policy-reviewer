@@ -1,0 +1,8 @@
+# GCP 開発環境設定例
+project_id       = "your-gcp-project-id"
+region           = "asia-northeast1"
+owner            = "dev-team"
+image_tag        = "latest"
+db_password      = "your-secure-password"
+app_secret_key   = "your-secret-key"
+deploy_frontend  = true
