@@ -3,7 +3,7 @@ Application configuration management.
 
 環境変数から設定を読み込み、アプリケーション全体で使用する。
 起動時に設定の妥当性を検証し、不足している設定を警告する。
-マルチクラウドLLMプロバイダー（Azure, AWS Bedrock, GCP Vertex AI, Local/Ollama）対応。
+マルチクラウドLLM/Embeddingプロバイダー（Azure, AWS Bedrock, GCP Vertex AI, Local/Ollama）対応。
 """
 
 import logging
@@ -28,6 +28,15 @@ class ModelTier(str, Enum):
     PRECISION = "precision"  # 最高精度、高コスト
     BALANCED = "balanced"  # バランス型
     COST_EFFECTIVE = "cost_effective"  # コスト重視
+
+
+class EmbeddingProvider(str, Enum):
+    """Embeddingプロバイダーの種類"""
+
+    AZURE_OPENAI = "azure_openai"  # text-embedding-3-large
+    AWS_BEDROCK = "aws_bedrock"  # amazon.titan-embed-text-v2:0
+    GCP_VERTEX = "gcp_vertex"  # text-embedding-005
+    LOCAL = "local"  # Ollama nomic-embed-text
 
 
 class OCRProvider(str, Enum):
@@ -151,6 +160,12 @@ class Settings(BaseSettings):
     # Local LLM (Ollama)
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "schroneko/gemma-2-2b-jpn-it"
+
+    # Embedding Provider Selection
+    embedding_provider: EmbeddingProvider = EmbeddingProvider.AZURE_OPENAI
+    aws_bedrock_embedding_model: str = "amazon.titan-embed-text-v2:0"
+    gcp_vertex_embedding_model: str = "text-embedding-005"
+    ollama_embedding_model: str = "nomic-embed-text"
 
     # Azure Document Intelligence
     azure_doc_intel_endpoint: str = ""
@@ -349,6 +364,9 @@ def validate_and_log_config(logger: logging.Logger) -> bool:
             logger.info("GCP Vertex AI: Configured")
         if settings.is_ollama_configured():
             logger.info(f"Ollama (Local): Configured | url={settings.ollama_base_url}")
+
+        # Embedding情報
+        logger.info(f"Active Embedding Provider: {settings.embedding_provider.value}")
 
         # OCR情報
         logger.info(f"Active OCR Provider: {settings.ocr_provider.value}")

@@ -1,6 +1,17 @@
 version: '3.8'
 
+# =============================================================================
+# Docker Compose プロファイル別構成
+# =============================================================================
+# 使い方:
+#   docker compose --profile local up         # SQLite + クラウドLLM
+#   docker compose --profile local-llm up     # PostgreSQL + Ollama（完全ローカル）
+#   docker compose --profile cloud-dev up     # PostgreSQL + クラウドLLM
+
 services:
+  # ===========================================================================
+  # Backend (FastAPI) - 全プロファイル共通
+  # ===========================================================================
   backend:
     build: ./backend
     container_name: policy-reviewer-backend
@@ -9,13 +20,21 @@ services:
     volumes:
       - ./backend:/app
       - ./data:/app/data
-    environment:
-      - DATABASE_URL=sqlite:///./data/policy_review.db
     env_file:
       - .env
     command: uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
     restart: unless-stopped
+    profiles: ["local", "local-llm", "cloud-dev"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
+  # ===========================================================================
+  # Frontend (Next.js) - 全プロファイル共通
+  # ===========================================================================
   frontend:
     build: ./frontend
     container_name: policy-reviewer-frontend
@@ -30,6 +49,47 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    profiles: ["local", "local-llm", "cloud-dev"]
+
+  # ===========================================================================
+  # PostgreSQL - local-llm / cloud-dev プロファイル
+  # ===========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: policy-reviewer-db
+    environment:
+      POSTGRES_DB: policy_review
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: dev-password
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    profiles: ["local-llm", "cloud-dev"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d policy_review"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================================================
+  # Ollama (Local LLM) - local-llm プロファイルのみ
+  # ===========================================================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: policy-reviewer-ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    restart: unless-stopped
+    profiles: ["local-llm"]
+    deploy:
+      resources:
+        reservations:
+          memory: 4G
 
 volumes:
-  data:
+  pgdata:
+  ollama_data:

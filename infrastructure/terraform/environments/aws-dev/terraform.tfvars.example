@@ -1,0 +1,6 @@
+# AWS 開発環境設定例
+aws_region     = "ap-northeast-1"
+owner          = "dev-team"
+image_tag      = "latest"
+db_password    = "your-secure-password"
+app_secret_key = "your-secret-key"
