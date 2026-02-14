@@ -16,7 +16,7 @@ import struct
 import time
 import logging
 from abc import ABC, abstractmethod
-from typing import Optional, Any
+from typing import Optional
 
 from app.config import settings, EmbeddingProvider
 
@@ -156,7 +156,6 @@ class GCPVertexEmbeddingClient(BaseEmbeddingClient):
             return
         try:
             import google.auth
-            from google.auth import credentials as auth_credentials
 
             if settings.gcp_credentials_path:
                 import google.auth.transport.requests

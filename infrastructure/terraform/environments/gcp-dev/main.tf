@@ -70,7 +70,7 @@ module "cloud_run" {
   # 開発環境では低コスト設定
   backend_cpu           = "1"
   backend_memory        = "1Gi"
-  backend_min_instances = 0  # ゼロスケール（開発コスト削減）
+  backend_min_instances = 0 # ゼロスケール（開発コスト削減）
   backend_max_instances = 3
   image_tag             = var.image_tag
 
