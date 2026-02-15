@@ -270,10 +270,22 @@ class UnifiedEmbeddingService:
 
         # アクティブプロバイダーを優先的に初期化（起動高速化）
         provider_init_map = {
-            EmbeddingProvider.AZURE_OPENAI: (settings.is_azure_configured, AzureOpenAIEmbeddingClient),
-            EmbeddingProvider.AWS_BEDROCK: (settings.is_bedrock_configured, AWSBedrockEmbeddingClient),
-            EmbeddingProvider.GCP_VERTEX: (settings.is_vertex_configured, GCPVertexEmbeddingClient),
-            EmbeddingProvider.LOCAL: (settings.is_ollama_configured, OllamaEmbeddingClient),
+            EmbeddingProvider.AZURE_OPENAI: (
+                settings.is_azure_configured,
+                AzureOpenAIEmbeddingClient,
+            ),
+            EmbeddingProvider.AWS_BEDROCK: (
+                settings.is_bedrock_configured,
+                AWSBedrockEmbeddingClient,
+            ),
+            EmbeddingProvider.GCP_VERTEX: (
+                settings.is_vertex_configured,
+                GCPVertexEmbeddingClient,
+            ),
+            EmbeddingProvider.LOCAL: (
+                settings.is_ollama_configured,
+                OllamaEmbeddingClient,
+            ),
         }
 
         # アクティブプロバイダーのみ初期化

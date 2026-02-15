@@ -88,7 +88,9 @@ class ReviewEngine:
 
         if not llm_service.is_available():
             logger.error("Review engine not configured - no LLM provider available")
-            raise RuntimeError("Review engine not configured - no LLM provider available")
+            raise RuntimeError(
+                "Review engine not configured - no LLM provider available"
+            )
 
         # Get review and document
         review = db.query(Review).filter(Review.id == review_id).first()
