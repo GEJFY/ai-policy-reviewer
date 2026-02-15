@@ -7,7 +7,6 @@ Pytest configuration and fixtures.
 """
 
 import pytest
-import asyncio
 from typing import Generator
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -76,14 +75,6 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
 
     app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=engine)
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """asyncioイベントループを提供する。"""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
 
 
 # テスト用サンプルデータ
