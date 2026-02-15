@@ -94,21 +94,21 @@ class AzureOpenAIClient(BaseLLMClient):
         self._initialize()
 
     def _initialize(self):
-        """Azure OpenAIクライアントを初期化"""
+        """Azure OpenAIクライアントを初期化（非同期クライアント使用）"""
         if not settings.is_azure_configured():
             logger.warning("Azure OpenAI not configured")
             return
 
         try:
-            from openai import AzureOpenAI
+            from openai import AsyncAzureOpenAI
 
-            self.client = AzureOpenAI(
+            self.client = AsyncAzureOpenAI(
                 azure_endpoint=settings.azure_openai_endpoint,
                 api_key=settings.azure_openai_api_key,
                 api_version="2024-10-21",
             )
             logger.info(
-                f"Azure OpenAI client initialized | deployment={self.deployment}"
+                f"Azure OpenAI client initialized (async) | deployment={self.deployment}"
             )
         except Exception as e:
             logger.error(f"Failed to initialize Azure OpenAI | error={e}")
@@ -128,7 +128,7 @@ class AzureOpenAIClient(BaseLLMClient):
 
         response_format = {"type": "json_object"} if json_mode else None
 
-        response = self.client.chat.completions.create(
+        response = await self.client.chat.completions.create(
             model=self.deployment,
             messages=messages,
             temperature=temperature,
@@ -214,7 +214,8 @@ class AWSBedrockClient(BaseLLMClient):
         if system_message:
             body["system"] = system_message
 
-        response = self.client.invoke_model(
+        response = await asyncio.to_thread(
+            self.client.invoke_model,
             modelId=self.model_id,
             body=json.dumps(body),
             contentType="application/json",
@@ -314,7 +315,8 @@ class GCPVertexClient(BaseLLMClient):
         if json_mode:
             generation_config.response_mime_type = "application/json"
 
-        response = self.model.generate_content(
+        response = await asyncio.to_thread(
+            self.model.generate_content,
             combined_prompt,
             generation_config=generation_config,
         )
@@ -358,21 +360,21 @@ class OllamaClient(BaseLLMClient):
         self._initialize()
 
     def _initialize(self):
-        """Ollamaクライアントを初期化（OpenAI互換API使用）"""
+        """Ollamaクライアントを初期化（非同期OpenAI互換API使用）"""
         if not settings.is_ollama_configured():
             logger.warning("Ollama not configured")
             return
 
         try:
-            from openai import OpenAI
+            from openai import AsyncOpenAI
 
-            # OllamaのOpenAI互換エンドポイントを使用
-            self.client = OpenAI(
+            # OllamaのOpenAI互換エンドポイントを使用（非同期クライアント）
+            self.client = AsyncOpenAI(
                 base_url=f"{self.base_url}/v1",
                 api_key="ollama",  # Ollamaはapi_keyを要求しない（ダミー値）
             )
             logger.info(
-                f"Ollama client initialized | "
+                f"Ollama client initialized (async) | "
                 f"base_url={self.base_url} | model={self.model_name}"
             )
         except Exception as e:
@@ -401,7 +403,7 @@ class OllamaClient(BaseLLMClient):
         if json_mode:
             try:
                 kwargs["response_format"] = {"type": "json_object"}
-                response = self.client.chat.completions.create(**kwargs)
+                response = await self.client.chat.completions.create(**kwargs)
             except Exception:
                 # response_format非対応モデルの場合はフォーマットなしで実行
                 del kwargs["response_format"]
@@ -409,9 +411,9 @@ class OllamaClient(BaseLLMClient):
                     f"Ollama model {self.model_name} does not support json_mode, "
                     f"falling back to unformatted output"
                 )
-                response = self.client.chat.completions.create(**kwargs)
+                response = await self.client.chat.completions.create(**kwargs)
         else:
-            response = self.client.chat.completions.create(**kwargs)
+            response = await self.client.chat.completions.create(**kwargs)
 
         # トークン使用量の取得（Ollamaは一部のモデルでusageを返さない場合がある）
         usage = getattr(response, "usage", None)
