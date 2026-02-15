@@ -55,15 +55,15 @@ class AzureOpenAIEmbeddingClient(BaseEmbeddingClient):
             logger.warning("Azure OpenAI Embedding not configured")
             return
         try:
-            from openai import AzureOpenAI
+            from openai import AsyncAzureOpenAI
 
-            self.client = AzureOpenAI(
+            self.client = AsyncAzureOpenAI(
                 azure_endpoint=settings.azure_openai_endpoint,
                 api_key=settings.azure_openai_api_key,
                 api_version=settings.azure_openai_api_version,
             )
             logger.info(
-                f"AzureOpenAIEmbeddingClient initialized | deployment={self.deployment}"
+                f"AzureOpenAIEmbeddingClient initialized (async) | deployment={self.deployment}"
             )
         except Exception as e:
             logger.error(f"Failed to initialize Azure OpenAI Embedding: {e}")
@@ -74,7 +74,7 @@ class AzureOpenAIEmbeddingClient(BaseEmbeddingClient):
     async def get_embedding(self, text: str) -> list[float]:
         if not self.client:
             raise RuntimeError("Azure OpenAI Embedding not configured")
-        response = self.client.embeddings.create(
+        response = await self.client.embeddings.create(
             model=self.deployment,
             input=text,
         )
@@ -83,7 +83,7 @@ class AzureOpenAIEmbeddingClient(BaseEmbeddingClient):
     async def get_embeddings_batch(self, texts: list[str]) -> list[list[float]]:
         if not self.client:
             raise RuntimeError("Azure OpenAI Embedding not configured")
-        response = self.client.embeddings.create(
+        response = await self.client.embeddings.create(
             model=self.deployment,
             input=texts,
         )
@@ -123,8 +123,11 @@ class AWSBedrockEmbeddingClient(BaseEmbeddingClient):
     async def get_embedding(self, text: str) -> list[float]:
         if not self.client:
             raise RuntimeError("AWS Bedrock Embedding not configured")
+        import asyncio
+
         body = json.dumps({"inputText": text})
-        response = self.client.invoke_model(
+        response = await asyncio.to_thread(
+            self.client.invoke_model,
             modelId=self.model_id,
             contentType="application/json",
             accept="application/json",
@@ -192,18 +195,22 @@ class GCPVertexEmbeddingClient(BaseEmbeddingClient):
     async def get_embedding(self, text: str) -> list[float]:
         if not self.model:
             raise RuntimeError("GCP Vertex AI Embedding not configured")
-        embeddings = self.model.get_embeddings([text])
+        import asyncio
+
+        embeddings = await asyncio.to_thread(self.model.get_embeddings, [text])
         return embeddings[0].values
 
     async def get_embeddings_batch(self, texts: list[str]) -> list[list[float]]:
         if not self.model:
             raise RuntimeError("GCP Vertex AI Embedding not configured")
+        import asyncio
+
         # Vertex AIはバッチ対応（最大250テキスト）
         chunk_size = 250
         all_embeddings = []
         for i in range(0, len(texts), chunk_size):
             chunk = texts[i : i + chunk_size]
-            embeddings = self.model.get_embeddings(chunk)
+            embeddings = await asyncio.to_thread(self.model.get_embeddings, chunk)
             all_embeddings.extend([e.values for e in embeddings])
         return all_embeddings
 
