@@ -21,6 +21,8 @@ env/
 
 # Data
 data/*.db
+*.db-shm
+*.db-wal
 data/uploads/
 !data/.gitkeep
 
@@ -30,12 +32,16 @@ node_modules/
 out/
 .npm
 *.tsbuildinfo
+next-env.d.ts
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# Claude Code
+.claude/
 
 # OS
 .DS_Store
