@@ -90,7 +90,7 @@ class TestAzureOpenAIClient:
         mock_response.usage.total_tokens = 150
 
         mock_openai = MagicMock()
-        mock_openai.chat.completions.create.return_value = mock_response
+        mock_openai.chat.completions.create = AsyncMock(return_value=mock_response)
 
         # クライアントを作成してモックを設定
         client = AzureOpenAIClient()
@@ -413,7 +413,7 @@ class TestOllamaClient:
         mock_response.model = "qwen2.5:3b"
 
         mock_openai = MagicMock()
-        mock_openai.chat.completions.create.return_value = mock_response
+        mock_openai.chat.completions.create = AsyncMock(return_value=mock_response)
 
         client = OllamaClient()
         client.client = mock_openai
@@ -437,7 +437,7 @@ class TestOllamaClient:
         mock_response.model = "gemma-2-2b-jpn-it"
 
         mock_openai = MagicMock()
-        mock_openai.chat.completions.create.return_value = mock_response
+        mock_openai.chat.completions.create = AsyncMock(return_value=mock_response)
 
         client = OllamaClient()
         client.client = mock_openai

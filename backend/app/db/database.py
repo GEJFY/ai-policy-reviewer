@@ -4,7 +4,7 @@ SQLite（ローカル開発）およびPostgreSQL（クラウド/本番）に対
 DATABASE_URLに基づいて適切な接続設定を自動選択する。
 """
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, Session
 from typing import Generator
 
@@ -23,12 +23,20 @@ if settings.database_url.startswith("postgresql"):
         echo=settings.debug,
     )
 else:
-    # SQLite: マルチスレッド対応
+    # SQLite: マルチスレッド対応 + WALモード（並行読み取り改善）
     engine = create_engine(
         settings.database_url,
         connect_args={"check_same_thread": False},
         echo=settings.debug,
     )
+
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.close()
+
 
 # Session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
