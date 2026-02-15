@@ -133,13 +133,13 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {review.high_count > 0 && (
+                        {(review.high_count ?? 0) > 0 && (
                           <Badge variant="destructive">{review.high_count} HIGH</Badge>
                         )}
-                        {review.medium_count > 0 && (
+                        {(review.medium_count ?? 0) > 0 && (
                           <Badge variant="warning">{review.medium_count} MEDIUM</Badge>
                         )}
-                        {review.low_count > 0 && (
+                        {(review.low_count ?? 0) > 0 && (
                           <Badge variant="secondary">{review.low_count} LOW</Badge>
                         )}
                       </div>
