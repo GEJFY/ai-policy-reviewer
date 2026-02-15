@@ -113,7 +113,7 @@ python -m scripts.generate_demo_pdfs
 ### 基本フロー
 
 1. `demo_setup.bat` を実行（デモデータ投入+PDF生成+サービス起動）
-2. ブラウザで http://localhost:3030 を開く
+2. ブラウザで http://localhost:3033 を開く
 3. サイドメニュー「文書管理」からサンプルPDFをアップロード
 4. AIレビューを実行（全20チェック項目を選択）
 5. 検出された問題を確認

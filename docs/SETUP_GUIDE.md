@@ -34,7 +34,7 @@ AI規程レビューツールは、社内規程文書（就業規則、セキュ
 │   フロントエンド      │     │    バックエンド        │
 │   (Next.js 16)      │────▶│    (FastAPI)          │
 │   ブラウザ画面        │     │    AI処理エンジン      │
-│   Port: 3030        │     │    Port: 8080         │
+│   Port: 3033        │     │    Port: 8004         │
 └─────────────────────┘     └──────────┬───────────┘
                                        │
                     ┌──────────────────┼──────────────────┐
@@ -447,12 +447,12 @@ PyPDF2によるテキスト抽出が自動的に使用されます。
 # 1. backendディレクトリに移動
 cd backend
 
-# 2. Python仮想環境の作成
-python -m venv venv
+# 2. Python仮想環境の作成（OneDrive外のパスを推奨）
+python -m venv C:\Users\%USERNAME%\.venvs\ai-policy-reviewer
 
 # 3. 仮想環境の有効化
-.\venv\Scripts\activate
-# プロンプトの先頭に (venv) が表示されればOK
+C:\Users\%USERNAME%\.venvs\ai-policy-reviewer\Scripts\activate
+# プロンプトの先頭に (ai-policy-reviewer) が表示されればOK
 
 # 4. 依存パッケージのインストール
 pip install --upgrade pip
@@ -460,8 +460,10 @@ pip install -r requirements.txt
 # ※ 初回は数分かかります
 ```
 
-> **OneDrive環境での注意**: OneDrive同期フォルダ内でvenvを作成する場合、
-> 大量のファイルが同期されるため、一時的にOneDriveの同期を停止することを推奨します。
+> **OneDrive環境での注意**: venvはOneDrive同期パスの **外** に作成することを強く推奨します。
+> 例: `C:\Users\%USERNAME%\.venvs\ai-policy-reviewer`
+> OneDrive内に作成すると大量のファイルが同期対象となり、パフォーマンス低下や同期エラーの原因になります。
+> やむを得ずOneDrive内に作成する場合は、一時的にOneDriveの同期を停止してください。
 
 ### データベースの初期化
 
@@ -476,13 +478,19 @@ python -c "from app.db.init_db import create_tables; create_tables()"
 ### バックエンドの起動
 
 ```powershell
+# 環境変数の設定（SQLAlchemy C拡張エラー回避に必須）
+$env:DISABLE_SQLALCHEMY_CEXT_RUNTIME = "1"
+
 # 開発モード（ファイル変更時に自動リロード）
-uvicorn app.main:app --reload --port 8080
+uvicorn app.main:app --reload --port 8004
 ```
+
+> **重要**: `DISABLE_SQLALCHEMY_CEXT_RUNTIME=1` を設定しないと、SQLAlchemy C拡張のランタイムエラーが
+> 発生する場合があります。バッチファイル経由で起動する場合は自動的に設定されます。
 
 成功すると以下のように表示されます：
 ```
-INFO:     Uvicorn running on http://127.0.0.1:8080 (Press CTRL+C to quit)
+INFO:     Uvicorn running on http://127.0.0.1:8004 (Press CTRL+C to quit)
 INFO:     Configuration validated successfully
 INFO:     Active LLM Provider: azure
 INFO:     Active LLM Model: gpt-5-2
@@ -507,13 +515,17 @@ npm install
 # ※ 初回は数分かかります
 
 # 3. 開発サーバーの起動
-npm run dev
+npx next dev --port 3033 --webpack
 ```
+
+> **`--webpack` フラグについて**: 日本語を含むパス（OneDriveの「ドキュメント」フォルダ等）で
+> プロジェクトを配置している場合、Turbopack（Next.js のデフォルトバンドラー）がクラッシュします。
+> `--webpack` を指定することで従来のWebpackバンドラーを使用し、この問題を回避できます。
 
 成功すると以下のように表示されます：
 ```
   ▲ Next.js 16.1.6
-  - Local:   http://localhost:3030
+  - Local:   http://localhost:3033
 ```
 
 ### 環境変数の設定（オプション）
@@ -521,7 +533,7 @@ npm run dev
 バックエンドが別のURLで動作している場合、`frontend/.env.local` を作成：
 
 ```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+NEXT_PUBLIC_API_URL=http://localhost:8004
 ```
 
 ---
@@ -558,10 +570,10 @@ python -m app.db.seed_data
 
 ```powershell
 # 基本ヘルスチェック
-curl http://localhost:8080/health
+curl http://localhost:8004/health
 
 # 詳細ヘルスチェック
-curl http://localhost:8080/health/detailed
+curl http://localhost:8004/health/detailed
 ```
 
 期待するレスポンス（Azure + Azure Doc Intel の場合）：
@@ -580,14 +592,14 @@ curl http://localhost:8080/health/detailed
 ### 9.2 システム情報の確認
 
 ```powershell
-curl http://localhost:8080/api/v1/system/info
+curl http://localhost:8004/api/v1/system/info
 ```
 
 LLMプロバイダー、OCRプロバイダー、モデル情報などが表示されます。
 
 ### 9.3 フロントエンドの確認
 
-ブラウザで http://localhost:3030 にアクセスし、以下を確認：
+ブラウザで http://localhost:3033 にアクセスし、以下を確認：
 
 1. ダッシュボードが表示される
 2. サイドバーのナビゲーションが機能する
@@ -603,7 +615,7 @@ LLMプロバイダー、OCRプロバイダー、モデル情報などが表示�
 
 ### 9.5 APIドキュメント
 
-http://localhost:8080/docs にアクセスすると、Swagger UIで全APIエンドポイントを確認・テストできます。
+http://localhost:8004/docs にアクセスすると、Swagger UIで全APIエンドポイントを確認・テストできます。
 
 ---
 
@@ -731,9 +743,11 @@ services:
   backend:
     build: ./backend
     ports:
-      - "8080:8080"
+      - "8004:8004"
     env_file:
       - .env
+    environment:
+      - DISABLE_SQLALCHEMY_CEXT_RUNTIME=1
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
@@ -741,7 +755,7 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "3030:3030"
+      - "3033:3033"
     depends_on:
       - backend
 ```
@@ -749,7 +763,8 @@ services:
 ### バックエンド本番起動
 
 ```powershell
-uvicorn app.main:app --host 0.0.0.0 --port 8080 --workers 4
+$env:DISABLE_SQLALCHEMY_CEXT_RUNTIME = "1"
+uvicorn app.main:app --host 0.0.0.0 --port 8004 --workers 4
 ```
 
 ---
@@ -771,6 +786,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 8080 --workers 4
 | CORSエラー | オリジンが許可されていない | `.env` の設定を確認 |
 | フロントエンド接続エラー | バックエンドが未起動 | バックエンドを先に起動 |
 | `npm install` エラー | Node.jsバージョン不足 | Node.js 20以上にアップグレード |
+| SQLAlchemy C拡張エラー | `DISABLE_SQLALCHEMY_CEXT_RUNTIME` 未設定 | 起動前に `$env:DISABLE_SQLALCHEMY_CEXT_RUNTIME = "1"` を実行 |
+| Turbopackクラッシュ / Next.js起動失敗 | 日本語パス（OneDrive等）でTurbopackが動作不可 | `npx next dev --port 3033 --webpack` で `--webpack` フラグを付けて起動 |
 
 ### LLMプロバイダーの接続テスト
 
@@ -822,14 +839,17 @@ Windowsユーザーの方は、バッチファイルで簡単に起動できま�
 
 | バッチファイル | 説明 |
 |--------------|------|
+| `start.bat` | **全サービス起動＋ブラウザ自動オープン（推奨）** |
 | `setup.bat` | 初期セットアップ（依存関係インストール、DB初期化） |
-| `start_all.bat` | 全サービス起動（推奨） |
+| `start_all.bat` | 全サービス起動 |
 | `start_backend.bat` | バックエンドのみ起動 |
 | `start_frontend.bat` | フロントエンドのみ起動 |
+| `start_demo.bat` | デモ環境起動（サンプルデータ投入＋起動） |
+| `run_tests.bat` | テスト実行 |
 | `stop_all.bat` | 全サービス停止 |
 
 **使い方:**
 1. `.env` ファイルを設定（セクション4〜5参照）
 2. `setup.bat` をダブルクリック（初回のみ）
-3. `start_all.bat` をダブルクリック
-4. ブラウザで http://localhost:3030 にアクセス
+3. `start.bat` をダブルクリック（ブラウザが自動で開きます）
+4. ブラウザで http://localhost:3033 にアクセス

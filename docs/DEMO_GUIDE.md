@@ -16,7 +16,7 @@
 ### 必要条件
 - Python 3.11+ / Node.js 20+ がインストール済み（またはDocker Desktop）
 - LLMプロバイダーのいずれかが設定されていること（Azure / AWS Bedrock / GCP Vertex AI / Ollama）
-- ポート 3030（フロントエンド）、8080（バックエンド）が空いていること
+- ポート 3033（フロントエンド）、8004（バックエンド）が空いていること
 
 ### 一括セットアップ（推奨）
 
@@ -46,14 +46,14 @@ python -m scripts.generate_demo_pdfs
 cd ..
 start_all.bat
 # または手動で:
-#   バックエンド: cd backend && uvicorn app.main:app --reload --port 8080
+#   バックエンド: cd backend && uvicorn app.main:app --reload --port 8004
 #   フロントエンド: cd frontend && npm run dev
 ```
 
 ### 確認URL
-- フロントエンド: http://localhost:3030
-- バックエンドAPI: http://localhost:8080
-- API仕様書: http://localhost:8080/docs
+- フロントエンド: http://localhost:3033
+- バックエンドAPI: http://localhost:8004
+- API仕様書: http://localhost:8004/docs
 
 ---
 
@@ -472,10 +472,12 @@ docker-compose down && docker-compose up -d
 
 # 手動起動時
 # バックエンドのログを確認
-cd backend && uvicorn app.main:app --reload --port 8080
+cd backend && uvicorn app.main:app --reload --port 8004
 # フロントエンドのログを確認
 cd frontend && npm run dev
 ```
+
+> **注意**: 日本語パス環境ではフロントエンドに `--webpack` フラグが必要です: `npx next dev --port 3033 --webpack`
 
 ### APIエラーが発生する場合
 1. `.env` ファイルのLLMプロバイダー設定を確認（`LLM_PROVIDER`と対応する認証情報）

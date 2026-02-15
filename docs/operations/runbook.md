@@ -17,10 +17,10 @@
 
 ```bash
 # 基本ヘルスチェック
-curl http://localhost:8080/health
+curl http://localhost:8004/health
 
 # 詳細ヘルスチェック（依存サービス含む）
-curl http://localhost:8080/health/detailed | jq
+curl http://localhost:8004/health/detailed | jq
 
 # Kubernetes環境
 kubectl get pods -n production -l app=policy-reviewer
@@ -44,10 +44,10 @@ kubectl logs -f deployment/policy-reviewer-backend -n production
 
 ```bash
 # Prometheusメトリクス
-curl http://localhost:8080/metrics
+curl http://localhost:8004/metrics
 
 # 主要メトリクス
-curl http://localhost:8080/metrics | grep -E "^(http_requests_total|llm_tokens_total|active_reviews)"
+curl http://localhost:8004/metrics | grep -E "^(http_requests_total|llm_tokens_total|active_reviews)"
 ```
 
 ---
@@ -67,10 +67,10 @@ curl http://localhost:8080/metrics | grep -E "^(http_requests_total|llm_tokens_t
 
 ```bash
 # 状態確認
-curl http://localhost:8080/health/detailed | jq '.circuit_breakers'
+curl http://localhost:8004/health/detailed | jq '.circuit_breakers'
 
 # 手動リセット（緊急時のみ）
-curl -X POST http://localhost:8080/api/v1/admin/circuit-breakers/reset
+curl -X POST http://localhost:8004/api/v1/admin/circuit-breakers/reset
 ```
 
 ---
@@ -87,7 +87,7 @@ curl -X POST http://localhost:8080/api/v1/admin/circuit-breakers/reset
 
 1. 障害確認
 ```bash
-curl http://localhost:8080/health/detailed | jq '.circuit_breakers'
+curl http://localhost:8004/health/detailed | jq '.circuit_breakers'
 ```
 
 2. プロバイダー切り替え
@@ -107,7 +107,7 @@ kubectl rollout restart deployment/policy-reviewer-backend -n production
 
 3. 監視継続
 ```bash
-watch -n 5 'curl -s http://localhost:8080/health/detailed | jq ".llm_service"'
+watch -n 5 'curl -s http://localhost:8004/health/detailed | jq ".llm_service"'
 ```
 
 ### OCRプロバイダー障害
@@ -120,7 +120,7 @@ watch -n 5 'curl -s http://localhost:8080/health/detailed | jq ".llm_service"'
 
 1. 現在のOCRプロバイダー確認
 ```bash
-curl http://localhost:8080/health/detailed | jq '.ocr_service'
+curl http://localhost:8004/health/detailed | jq '.ocr_service'
 ```
 
 2. プロバイダー切り替え
@@ -189,7 +189,7 @@ psql -h $DB_HOST -U $DB_USER -d $DB_NAME -c "SELECT 1"
 
 2. 接続プール確認
 ```bash
-curl http://localhost:8080/metrics | grep db_connections
+curl http://localhost:8004/metrics | grep db_connections
 ```
 
 3. 必要に応じてアプリケーション再起動
@@ -217,10 +217,10 @@ kubectl scale deployment/policy-reviewer-backend -n production --replicas=5
 3. 原因調査
 ```bash
 # 同時レビュー数確認
-curl http://localhost:8080/metrics | grep active_reviews
+curl http://localhost:8004/metrics | grep active_reviews
 
 # レート制限状態
-curl http://localhost:8080/metrics | grep rate_limit
+curl http://localhost:8004/metrics | grep rate_limit
 ```
 
 ---
@@ -231,7 +231,7 @@ curl http://localhost:8080/metrics | grep rate_limit
 
 ```bash
 # 1. 現在のバージョン確認
-curl http://localhost:8080/ | jq '.version'
+curl http://localhost:8004/ | jq '.version'
 
 # 2. 新バージョンデプロイ（Blue-Green）
 gh workflow run cd-prod.yml \
@@ -242,7 +242,7 @@ gh workflow run cd-prod.yml \
 kubectl get pods -n production -l app=policy-reviewer
 
 # 4. 動作確認
-curl http://localhost:8080/health/detailed
+curl http://localhost:8004/health/detailed
 ```
 
 ### データベースバックアップ

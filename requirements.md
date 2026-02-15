@@ -112,7 +112,7 @@ AIレビュー時に適用するチェック項目を定義・管理する機能
 │  │   ┌─────────────────┐      ┌─────────────────┐         │   │
 │  │   │   Frontend      │      │    Backend      │         │   │
 │  │   │   (Next.js)     │◄────►│    (FastAPI)    │         │   │
-│  │   │   Port: 3030    │      │    Port: 8080   │         │   │
+│  │   │   Port: 3033    │      │    Port: 8004   │         │   │
 │  │   └─────────────────┘      └────────┬────────┘         │   │
 │  │                                     │                   │   │
 │  │            ┌────────────────────────┼──────────┐       │   │
@@ -282,8 +282,8 @@ cp .env.example .env
 docker-compose up -d
 
 # 4. アクセス
-# フロントエンド: http://localhost:3030
-# API Docs: http://localhost:8080/docs
+# フロントエンド: http://localhost:3033
+# API Docs: http://localhost:8004/docs
 
 9.4 ディレクトリ構成
 

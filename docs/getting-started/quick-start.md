@@ -73,7 +73,8 @@ python -m venv venv
 pip install -r requirements.txt
 
 # サーバー起動
-uvicorn app.main:app --reload --port 8080
+set DISABLE_SQLALCHEMY_CEXT_RUNTIME=1
+uvicorn app.main:app --reload --port 8004
 ```
 
 ## Step 4: フロントエンドの起動（1分）
@@ -83,16 +84,18 @@ uvicorn app.main:app --reload --port 8080
 ```bash
 cd frontend
 npm install
-npm run dev
+npx next dev --port 3033 --webpack
 ```
+
+> **Note:** `--webpack` フラグは日本語パス環境で必須（Turbopackバグ回避）
 
 ## Step 5: 動作確認（30秒）
 
 ブラウザで以下のURLにアクセス：
 
-- フロントエンド: http://localhost:3030
-- API Docs: http://localhost:8080/docs
-- ヘルスチェック: http://localhost:8080/health/detailed
+- フロントエンド: http://localhost:3033
+- API Docs: http://localhost:8004/docs
+- ヘルスチェック: http://localhost:8004/health/detailed
 
 ## 次のステップ
 
@@ -116,7 +119,7 @@ UnifiedLLMService: No LLM providers available
 [Errno 10048] error while attempting to bind on address
 ```
 
-→ 別のポートを指定: `uvicorn app.main:app --port 8081`
+→ 別のポートを指定: `uvicorn app.main:app --port 8005`
 
 ### モジュールが見つからない
 
@@ -125,6 +128,10 @@ ModuleNotFoundError: No module named 'xxx'
 ```
 
 → 仮想環境が有効化されているか確認し、`pip install -r requirements.txt`を再実行
+
+### 日本語パスでフロントエンドがクラッシュ
+
+→ `--webpack` フラグを付けて起動: `npx next dev --port 3033 --webpack`
 
 ## サポート
 
