@@ -49,6 +49,7 @@ from app.services.ocr_service import ocr_service
 from app.services.chunking_service import chunking_service
 from app.services.embedding_service import embedding_service
 from app.core.logging_config import get_logger
+from app.core.exceptions import FileTooLargeError
 
 # モジュール専用ロガー
 logger = get_logger(__name__)
@@ -57,6 +58,9 @@ router = APIRouter(prefix="/api/v1/documents", tags=["Documents"])
 
 # Upload directory
 UPLOAD_DIR = "./data/uploads"
+
+# ファイルサイズ上限（50MB）
+MAX_FILE_SIZE = 50 * 1024 * 1024
 
 
 @router.get("", response_model=list[DocumentResponse])
@@ -138,6 +142,11 @@ async def upload_document(
 
     # Save file
     content = await file.read()
+
+    # ファイルサイズ上限チェック
+    if len(content) > MAX_FILE_SIZE:
+        raise FileTooLargeError(file_size=len(content), max_size=MAX_FILE_SIZE)
+
     with open(file_path, "wb") as f:
         f.write(content)
 
@@ -281,8 +290,28 @@ async def process_document_ocr(document_id: int):
         db.commit()
 
         try:
-            # Extract text
-            if ocr_service.is_available():
+            # Extract text - まずPyPDF2でテキスト抽出を試みる
+            extracted_text = ""
+            try:
+                import PyPDF2
+
+                with open(document.file_path, "rb") as f:
+                    reader = PyPDF2.PdfReader(f)
+                    pages = [page.extract_text() or "" for page in reader.pages]
+                    extracted_text = "\n\n".join(pages).strip()
+            except Exception as e:
+                logger.warning(
+                    f"PyPDF2 text extraction failed: document_id={document_id}, error={e}"
+                )
+
+            if len(extracted_text) > 100:
+                # テキストベースPDF: PyPDF2で十分なテキストが取れた
+                logger.info(
+                    f"Using PyPDF2 for text PDF: document_id={document_id}, "
+                    f"chars={len(extracted_text)}"
+                )
+            elif ocr_service.is_available():
+                # スキャンPDF: OCRが必要
                 logger.info(
                     f"Using {ocr_service.provider_name()} for OCR: document_id={document_id}"
                 )
@@ -290,16 +319,10 @@ async def process_document_ocr(document_id: int):
                     document.file_path
                 )
             else:
-                # Fallback: try basic text extraction
-                logger.info(
-                    f"Using PyPDF2 fallback for text extraction: document_id={document_id}"
+                logger.warning(
+                    f"No OCR available and PyPDF2 extraction insufficient: "
+                    f"document_id={document_id}"
                 )
-                import PyPDF2
-
-                with open(document.file_path, "rb") as f:
-                    reader = PyPDF2.PdfReader(f)
-                    pages = [page.extract_text() for page in reader.pages]
-                    extracted_text = "\n\n".join(pages)
 
             document.extracted_text = extracted_text
             logger.info(

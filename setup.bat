@@ -1,68 +1,67 @@
 @echo off
-chcp 65001 >nul
 echo ========================================
-echo   規程レビューツール - 初期セットアップ
+echo   AI Policy Reviewer - Initial Setup
 echo ========================================
 echo.
 
 cd /d "%~dp0"
 
-REM データディレクトリの作成
-echo [1/6] データディレクトリを作成中...
+REM Create data directories
+echo [1/6] Creating data directories...
 if not exist "data" mkdir data
 if not exist "logs" mkdir logs
-echo       完了
+echo       Done
 
-REM バックエンドのセットアップ
+REM Backend setup
 echo.
-echo [2/6] バックエンド仮想環境を作成中...
+echo [2/6] Creating backend virtual environment...
 cd backend
 if not exist "venv" (
     python -m venv venv
-    echo       仮想環境を作成しました
+    echo       Created virtual environment
 ) else (
-    echo       仮想環境は既に存在します
+    echo       Virtual environment already exists
 )
 
 echo.
-echo [3/6] バックエンド依存関係をインストール中...
+echo [3/6] Installing backend dependencies...
 call venv\Scripts\activate.bat
 pip install -r requirements.txt --quiet
-echo       完了
+echo       Done
 
 echo.
-echo [4/6] データベースを初期化中...
+echo [4/6] Initializing database...
 python -c "from app.db.init_db import create_tables; create_tables()"
-echo       完了
+echo       Done
 
 echo.
-echo [5/6] 初期データを投入中...
+echo [5/6] Seeding initial data...
 python -m app.db.seed_data
-echo       完了
+echo       Done
 
 cd ..
 
-REM フロントエンドのセットアップ
+REM Frontend setup
 echo.
-echo [6/6] フロントエンド依存関係をインストール中...
+echo [6/6] Installing frontend dependencies...
 cd frontend
 call npm install --silent
-echo       完了
+echo       Done
 
 cd ..
 
 echo.
 echo ========================================
-echo   セットアップが完了しました
+echo   Setup Complete
 echo ========================================
 echo.
-echo 次のステップ:
-echo   1. .env ファイルにAzure認証情報を設定
-echo   2. start_all.bat をダブルクリックして起動
+echo Next steps:
+echo   1. Set Azure credentials in .env
+echo   2. Run start.bat to launch services
 echo.
-echo 起動用バッチファイル:
-echo   start_all.bat      - 全サービス起動（推奨）
-echo   start_backend.bat  - バックエンドのみ
-echo   start_frontend.bat - フロントエンドのみ
+echo Startup scripts:
+echo   start.bat          - Start all services (recommended)
+echo   start_backend.bat  - Backend only
+echo   start_frontend.bat - Frontend only
 echo.
 pause

@@ -432,7 +432,11 @@ async def execute_review_task(review_id: int, check_item_ids: list[int]):
         Azure OpenAI APIのRate Limit対応は
         ReviewEngine内で実装されている。
     """
+    import asyncio
     from app.db.database import SessionLocal
+
+    # レビュータスクのタイムアウト（10分）
+    REVIEW_TIMEOUT_SECONDS = 600
 
     logger.info(
         f"Starting background review task: review_id={review_id}, check_items={check_item_ids}"
@@ -440,12 +444,23 @@ async def execute_review_task(review_id: int, check_item_ids: list[int]):
 
     db = SessionLocal()
     try:
-        await review_engine.execute_review(
-            db=db,
-            review_id=review_id,
-            check_item_ids=check_item_ids,
+        await asyncio.wait_for(
+            review_engine.execute_review(
+                db=db,
+                review_id=review_id,
+                check_item_ids=check_item_ids,
+            ),
+            timeout=REVIEW_TIMEOUT_SECONDS,
         )
         logger.info(f"Review task completed successfully: review_id={review_id}")
+    except asyncio.TimeoutError:
+        logger.error(
+            f"Review task timed out after {REVIEW_TIMEOUT_SECONDS}s: review_id={review_id}"
+        )
+        review = db.query(Review).filter(Review.id == review_id).first()
+        if review:
+            review.status = "failed"
+            db.commit()
     except Exception as e:
         logger.error(
             f"Review execution failed: review_id={review_id}, error={e}", exc_info=True

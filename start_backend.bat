@@ -1,39 +1,22 @@
 @echo off
-chcp 65001 >nul
 echo ========================================
-echo   規程レビューツール - バックエンド起動
-echo ========================================
-echo.
-
-cd /d "%~dp0backend"
-
-REM 仮想環境が存在する場合はアクティベート
-if exist "venv\Scripts\activate.bat" (
-    echo 仮想環境をアクティベート中...
-    call venv\Scripts\activate.bat
-)
-
-REM データディレクトリの作成
-if not exist "..\data" (
-    echo データディレクトリを作成中...
-    mkdir "..\data"
-)
-
-REM ログディレクトリの作成
-if not exist "logs" (
-    echo ログディレクトリを作成中...
-    mkdir "logs"
-)
-
-echo.
-echo バックエンドサーバーを起動中...
-echo URL: http://localhost:8080
-echo API Docs: http://localhost:8080/docs
-echo.
-echo 終了するには Ctrl+C を押してください
+echo   AI Policy Reviewer - Backend Start
 echo ========================================
 echo.
 
-python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8080
+cd /d C:\dev-pr\backend
+
+set DISABLE_SQLALCHEMY_CEXT_RUNTIME=1
+
+echo.
+echo Starting backend server...
+echo URL: http://localhost:8004
+echo API Docs: http://localhost:8004/docs
+echo.
+echo Press Ctrl+C to stop
+echo ========================================
+echo.
+
+C:\Users\goyos\.venvs\ai-policy-reviewer3\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8004
 
 pause

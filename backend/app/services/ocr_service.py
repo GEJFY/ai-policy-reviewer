@@ -113,7 +113,7 @@ class AzureDocIntelOCRService(BaseOCRService):
         try:
             poller = self.client.begin_analyze_document(
                 model_id="prebuilt-read",
-                analyze_request=content,
+                body=content,
                 content_type="application/pdf",
             )
             result: AnalyzeResult = poller.result()

@@ -28,7 +28,10 @@ export default function ReviewDetailPage() {
   const [review, setReview] = useState<Review | null>(null)
   const [findings, setFindings] = useState<Finding[]>([])
   const [loading, setLoading] = useState(true)
-  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState<number | null>(null)
+  const [pollCount, setPollCount] = useState(0)
   const [selectedFindings, setSelectedFindings] = useState<number[]>([])
   const [severityFilter, setSeverityFilter] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string>('')
@@ -38,18 +41,19 @@ export default function ReviewDetailPage() {
   }, [reviewId])
 
   useEffect(() => {
-    // Poll for status updates if processing
-    if (review?.status === 'processing') {
-      const interval = setInterval(() => {
+    // Poll for status updates if pending or processing (with backoff)
+    if (review?.status === 'pending' || review?.status === 'processing') {
+      // 最初は3秒、徐々に遅くして最大10秒
+      const delay = Math.min(3000 + pollCount * 1000, 10000)
+      const timeout = setTimeout(() => {
         loadReview()
-      }, 3000)
-      setPollingInterval(interval)
-      return () => clearInterval(interval)
-    } else if (pollingInterval) {
-      clearInterval(pollingInterval)
-      setPollingInterval(null)
+        setPollCount((prev) => prev + 1)
+      }, delay)
+      return () => clearTimeout(timeout)
+    } else {
+      setPollCount(0)
     }
-  }, [review?.status])
+  }, [review?.status, pollCount])
 
   async function loadReview() {
     try {
@@ -59,48 +63,67 @@ export default function ReviewDetailPage() {
       ])
       setReview(reviewData)
       setFindings(findingsData)
+      setError(null)
     } catch (error) {
       console.error('Failed to load review:', error)
+      setError('レビューの読み込みに失敗しました。バックエンドが起動しているか確認してください。')
     } finally {
       setLoading(false)
     }
   }
 
   async function handleApprove(findingId: number) {
+    setActionError(null)
+    setActionLoading(findingId)
     try {
       await findingsAPI.approve(findingId)
       loadReview()
     } catch (error) {
       console.error('Failed to approve finding:', error)
+      setActionError('指摘の承認に失敗しました')
+    } finally {
+      setActionLoading(null)
     }
   }
 
   async function handleReject(findingId: number) {
+    setActionError(null)
+    setActionLoading(findingId)
     try {
       await findingsAPI.reject(findingId)
       loadReview()
     } catch (error) {
       console.error('Failed to reject finding:', error)
+      setActionError('指摘の却下に失敗しました')
+    } finally {
+      setActionLoading(null)
     }
   }
 
   async function handleDefer(findingId: number) {
+    setActionError(null)
+    setActionLoading(findingId)
     try {
       await findingsAPI.defer(findingId)
       loadReview()
     } catch (error) {
       console.error('Failed to defer finding:', error)
+      setActionError('指摘の保留に失敗しました')
+    } finally {
+      setActionLoading(null)
     }
   }
 
   async function handleBulkApprove() {
     if (selectedFindings.length === 0) return
+    setActionError(null)
     try {
       await findingsAPI.bulkApprove(reviewId, selectedFindings, 'APPROVED')
       setSelectedFindings([])
       loadReview()
     } catch (error) {
       console.error('Failed to bulk approve:', error)
+      setActionError('一括承認に失敗しました')
     }
   }
 
@@ -160,14 +183,30 @@ export default function ReviewDetailPage() {
     )
   }
 
-  if (!review) {
+  if (error || !review) {
     return (
       <>
         <Header title="レビュー詳細" />
         <div className="p-6">
-          <div className="text-center text-gray-500">
-            レビューが見つかりません
-          </div>
+          <Link
+            href="/reviews"
+            className="mb-4 inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
+          >
+            <ArrowLeft className="mr-1 h-4 w-4" />
+            レビュー一覧に戻る
+          </Link>
+          <Card className="mt-4">
+            <CardContent className="p-8 text-center">
+              <AlertCircle className="mx-auto mb-3 h-10 w-10 text-red-400" />
+              <p className="text-gray-600 mb-4">
+                {error || 'レビューが見つかりません'}
+              </p>
+              <Button onClick={() => { setLoading(true); setError(null); loadReview() }}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                再読み込み
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </>
     )
@@ -191,10 +230,12 @@ export default function ReviewDetailPage() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>{review.document_title || `文書 #${review.document_id}`}</span>
-              {review.status === 'processing' && (
+              {(review.status === 'pending' || review.status === 'processing') && (
                 <div className="flex items-center gap-2 text-yellow-600">
                   <RefreshCw className="h-5 w-5 animate-spin" />
-                  <span className="text-sm">処理中...</span>
+                  <span className="text-sm">
+                    {review.status === 'pending' ? 'レビュー準備中...' : 'AIがレビュー中...'}
+                  </span>
                 </div>
               )}
             </CardTitle>
@@ -207,7 +248,7 @@ export default function ReviewDetailPage() {
                   {review.status === 'completed' && (
                     <CheckCircle className="h-5 w-5 text-green-500" />
                   )}
-                  {review.status === 'processing' && (
+                  {(review.status === 'pending' || review.status === 'processing') && (
                     <Clock className="h-5 w-5 text-yellow-500" />
                   )}
                   {review.status === 'failed' && (
@@ -216,11 +257,13 @@ export default function ReviewDetailPage() {
                   <span className="font-medium">
                     {review.status === 'completed'
                       ? '完了'
-                      : review.status === 'processing'
-                        ? '処理中'
-                        : review.status === 'failed'
-                          ? '失敗'
-                          : '待機中'}
+                      : review.status === 'pending'
+                        ? '準備中'
+                        : review.status === 'processing'
+                          ? 'AIレビュー中'
+                          : review.status === 'failed'
+                            ? '失敗'
+                            : '不明'}
                   </span>
                 </div>
               </div>
@@ -261,6 +304,13 @@ export default function ReviewDetailPage() {
             >
               選択解除
             </Button>
+          </div>
+        )}
+
+        {/* Action Error */}
+        {actionError && (
+          <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
+            {actionError}
           </div>
         )}
 
@@ -371,14 +421,23 @@ export default function ReviewDetailPage() {
                     {/* Actions */}
                     {finding.status === 'PENDING' && (
                       <div className="mt-4 flex gap-2 border-t pt-4">
-                        <Button size="sm" onClick={() => handleApprove(finding.id)}>
-                          <Check className="mr-1 h-4 w-4" />
+                        <Button
+                          size="sm"
+                          onClick={() => handleApprove(finding.id)}
+                          disabled={actionLoading === finding.id}
+                        >
+                          {actionLoading === finding.id ? (
+                            <RefreshCw className="mr-1 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Check className="mr-1 h-4 w-4" />
+                          )}
                           承認
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => handleDefer(finding.id)}
+                          disabled={actionLoading === finding.id}
                         >
                           <Pause className="mr-1 h-4 w-4" />
                           保留
@@ -387,6 +446,7 @@ export default function ReviewDetailPage() {
                           size="sm"
                           variant="destructive"
                           onClick={() => handleReject(finding.id)}
+                          disabled={actionLoading === finding.id}
                         >
                           <X className="mr-1 h-4 w-4" />
                           却下

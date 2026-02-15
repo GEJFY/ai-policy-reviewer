@@ -1,29 +1,23 @@
 @echo off
-chcp 65001 >nul
 echo ========================================
-echo   規程レビューツール - デモデータ投入
+echo   AI Policy Reviewer - Seed Demo Data
 echo ========================================
 echo.
 
-cd /d "%~dp0backend"
+cd /d C:\dev-pr\backend
 
-REM 仮想環境をアクティベート
-if exist "venv\Scripts\activate.bat" (
-    call venv\Scripts\activate.bat
-)
-
-echo デモデータを投入しています...
+echo Seeding demo data...
 echo.
-python -m scripts.seed_demo_data
+C:\Users\goyos\.venvs\ai-policy-reviewer3\Scripts\python.exe -m scripts.seed_demo_data
 
 echo.
 echo ========================================
-echo   デモデータ投入完了
+echo   Demo data seeding complete
 echo ========================================
 echo.
-echo 次のステップ:
-echo   1. サーバー起動: run_backend.bat または uvicorn app.main:app --reload
-echo   2. http://localhost:8080/docs でAPI確認
-echo   3. http://localhost:3030 でフロントエンド確認
+echo Next steps:
+echo   1. Start services: start.bat
+echo   2. API docs: http://localhost:8004/docs
+echo   3. Frontend:  http://localhost:3033
 echo.
 pause

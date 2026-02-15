@@ -265,30 +265,36 @@ class UnifiedEmbeddingService:
         self._initialize_clients()
 
     def _initialize_clients(self):
-        """設定済みのEmbeddingクライアントを初期化"""
-        # Azure OpenAI
-        if settings.is_azure_configured():
-            client = AzureOpenAIEmbeddingClient()
-            if client.is_available():
-                self.clients[EmbeddingProvider.AZURE_OPENAI] = client
+        """設定済みのEmbeddingクライアントを初期化（アクティブプロバイダー優先）"""
+        configured = settings.embedding_provider
 
-        # AWS Bedrock
-        if settings.is_bedrock_configured():
-            client = AWSBedrockEmbeddingClient()
-            if client.is_available():
-                self.clients[EmbeddingProvider.AWS_BEDROCK] = client
+        # アクティブプロバイダーを優先的に初期化（起動高速化）
+        provider_init_map = {
+            EmbeddingProvider.AZURE_OPENAI: (
+                settings.is_azure_configured,
+                AzureOpenAIEmbeddingClient,
+            ),
+            EmbeddingProvider.AWS_BEDROCK: (
+                settings.is_bedrock_configured,
+                AWSBedrockEmbeddingClient,
+            ),
+            EmbeddingProvider.GCP_VERTEX: (
+                settings.is_vertex_configured,
+                GCPVertexEmbeddingClient,
+            ),
+            EmbeddingProvider.LOCAL: (
+                settings.is_ollama_configured,
+                OllamaEmbeddingClient,
+            ),
+        }
 
-        # GCP Vertex AI
-        if settings.is_vertex_configured():
-            client = GCPVertexEmbeddingClient()
-            if client.is_available():
-                self.clients[EmbeddingProvider.GCP_VERTEX] = client
-
-        # Ollama (Local)
-        if settings.is_ollama_configured():
-            client = OllamaEmbeddingClient()
-            if client.is_available():
-                self.clients[EmbeddingProvider.LOCAL] = client
+        # アクティブプロバイダーのみ初期化
+        if configured in provider_init_map:
+            check_fn, client_cls = provider_init_map[configured]
+            if check_fn():
+                client = client_cls()
+                if client.is_available():
+                    self.clients[configured] = client
 
         # アクティブプロバイダー設定
         configured = settings.embedding_provider

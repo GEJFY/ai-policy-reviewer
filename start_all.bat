@@ -1,36 +1,36 @@
 @echo off
-chcp 65001 >nul
 echo ========================================
-echo   規程レビューツール - 全サービス起動
+echo   AI Policy Reviewer - Start All
 echo ========================================
 echo.
-echo バックエンドとフロントエンドを起動します...
+echo Starting backend and frontend...
 echo.
 
-REM バックエンドを新しいウィンドウで起動
-start "Policy Reviewer - Backend" cmd /c "%~dp0start_backend.bat"
+REM Start backend in new window
+set DISABLE_SQLALCHEMY_CEXT_RUNTIME=1
+start "Backend-8004" cmd /k "cd /d C:\dev-pr\backend && C:\Users\goyos\.venvs\ai-policy-reviewer3\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8004"
 
-REM 少し待機（バックエンドの起動を待つ）
-echo バックエンドの起動を待機中...
+REM Wait for backend to start
+echo Waiting for backend to start...
 timeout /t 5 /nobreak >nul
 
-REM フロントエンドを新しいウィンドウで起動
-start "Policy Reviewer - Frontend" cmd /c "%~dp0start_frontend.bat"
+REM Start frontend in new window
+start "Frontend-3033" cmd /k "cd /d C:\dev-pr\frontend && npx next dev --webpack -p 3033"
 
 echo.
 echo ========================================
-echo サービスが起動しました
+echo   Services started
 echo.
-echo   フロントエンド: http://localhost:3030
-echo   バックエンドAPI: http://localhost:8080
-echo   APIドキュメント: http://localhost:8080/docs
+echo   Frontend: http://localhost:3033
+echo   Backend:  http://localhost:8004
+echo   API Docs: http://localhost:8004/docs
 echo.
-echo 各ウィンドウを閉じるとサービスが停止します
+echo   Close each window to stop its service
 echo ========================================
 echo.
 
-REM ブラウザを自動で開く（5秒後）
-timeout /t 5 /nobreak >nul
-start http://localhost:3030
+REM Open browser after frontend is ready
+timeout /t 20 /nobreak >nul
+start http://localhost:3033
 
 pause
