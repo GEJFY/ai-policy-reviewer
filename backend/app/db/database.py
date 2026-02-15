@@ -37,6 +37,7 @@ else:
         cursor.execute("PRAGMA busy_timeout=5000")
         cursor.close()
 
+
 # Session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
