@@ -1,26 +1,25 @@
 @echo off
-chcp 65001 >nul
 echo ========================================
-echo   規程レビューツール - フロントエンド起動
+echo   AI Policy Reviewer - Frontend Start
 echo ========================================
 echo.
 
-cd /d "%~dp0frontend"
+cd /d C:\dev-pr\frontend
 
-REM node_modulesが存在しない場合はインストール
+REM Install dependencies if needed
 if not exist "node_modules" (
-    echo 依存関係をインストール中...
+    echo Installing dependencies...
     call npm install
 )
 
 echo.
-echo フロントエンドサーバーを起動中...
-echo URL: http://localhost:3030
+echo Starting frontend server...
+echo URL: http://localhost:3033
 echo.
-echo 終了するには Ctrl+C を押してください
+echo Press Ctrl+C to stop
 echo ========================================
 echo.
 
-npm run dev
+npx next dev --webpack -p 3033
 
 pause

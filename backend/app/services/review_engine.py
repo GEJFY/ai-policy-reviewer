@@ -86,9 +86,9 @@ class ReviewEngine:
         """
         start_time = time.time()
 
-        if not self.client:
-            logger.error("Review engine not configured")
-            raise RuntimeError("Review engine not configured")
+        if not llm_service.is_available():
+            logger.error("Review engine not configured - no LLM provider available")
+            raise RuntimeError("Review engine not configured - no LLM provider available")
 
         # Get review and document
         review = db.query(Review).filter(Review.id == review_id).first()

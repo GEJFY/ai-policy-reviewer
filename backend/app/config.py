@@ -185,8 +185,8 @@ class Settings(BaseSettings):
     secret_key: str = "dev-secret-key"
     debug: bool = True
 
-    # CORS (ポート3030に変更)
-    cors_origins: list[str] = ["http://localhost:3030"]
+    # CORS (開発用: 複数ポート対応)
+    cors_origins: list[str] = ["http://localhost:3030", "http://localhost:3031", "http://localhost:3032", "http://localhost:3033"]
 
     class Config:
         env_file = (".env", "../.env")  # backend/.env → project root/.env

@@ -237,6 +237,12 @@ class RateLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
+        # デバッグモードではレート制限を無効化
+        from app.config import settings
+        if settings.debug:
+            await self.app(scope, receive, send)
+            return
+
         # 静的ファイルやヘルスチェックは除外
         path = scope["path"]
         if path in [

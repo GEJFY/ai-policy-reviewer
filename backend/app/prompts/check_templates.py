@@ -4,12 +4,13 @@ Check item templates for different review categories.
 """
 
 # 共通の出力形式リマインダー
+# NOTE: {{ }} はstr.format()でリテラルの中括弧にエスケープするため
 OUTPUT_REMINDER = """
 ## 出力形式リマインダー
 必ず以下のJSON形式で出力してください（マークダウンコードブロック不可）:
-{
+{{
   "findings": [
-    {
+    {{
       "location": "第X条",
       "original_text": "問題文",
       "issue_type": "カテゴリ",
@@ -17,10 +18,10 @@ OUTPUT_REMINDER = """
       "description": "問題説明",
       "suggestion": "改善案",
       "rationale": "根拠"
-    }
+    }}
   ],
-  "summary": {"total_findings": N, "high_count": N, "medium_count": N, "low_count": N}
-}
+  "summary": {{"total_findings": N, "high_count": N, "medium_count": N, "low_count": N}}
+}}
 """
 
 CHECK_TEMPLATES = {

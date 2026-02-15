@@ -11,6 +11,7 @@ class RuleType(str, Enum):
     STYLE = "STYLE"  # 文体ルール（敬体/常体等）
     FORMAT = "FORMAT"  # フォーマットルール（日付形式、番号形式等）
     TERMINOLOGY = "TERMINOLOGY"  # 用語ルール（外来語表記等）
+    STRUCTURE = "STRUCTURE"  # 構成ルール（章立て、見出し等）
 
 
 class WritingRuleBase(BaseModel):

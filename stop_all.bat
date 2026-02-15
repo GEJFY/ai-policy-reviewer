@@ -1,24 +1,22 @@
 @echo off
-chcp 65001 >nul
 echo ========================================
-echo   規程レビューツール - 全サービス停止
+echo   AI Policy Reviewer - Stop All
 echo ========================================
 echo.
 
-echo バックエンドプロセスを停止中...
-taskkill /f /im python.exe /fi "WINDOWTITLE eq Policy Reviewer - Backend*" 2>nul
-for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8080 ^| findstr LISTENING') do (
+echo Stopping backend processes...
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8004 ^| findstr LISTENING') do (
     taskkill /f /pid %%a 2>nul
 )
 
-echo フロントエンドプロセスを停止中...
-for /f "tokens=5" %%a in ('netstat -aon ^| findstr :3030 ^| findstr LISTENING') do (
+echo Stopping frontend processes...
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :3033 ^| findstr LISTENING') do (
     taskkill /f /pid %%a 2>nul
 )
 
 echo.
 echo ========================================
-echo   全サービスを停止しました
+echo   All services stopped
 echo ========================================
 echo.
 pause

@@ -14,7 +14,7 @@ import {
   CheckCircle,
   Clock,
 } from 'lucide-react'
-import { reviewsAPI, documentsAPI, termsAPI, checkItemsAPI } from '@/lib/api'
+import { reviewsAPI, documentsAPI, termsAPI, checkItemsAPI, Review } from '@/lib/api'
 
 interface Stats {
   documents: number
@@ -32,25 +32,31 @@ export default function DashboardPage() {
     checkItems: 0,
     pendingFindings: 0,
   })
-  const [recentReviews, setRecentReviews] = useState<any[]>([])
+  const [recentReviews, setRecentReviews] = useState<Review[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [documents, reviews, terms, checkItems] = await Promise.all([
+        const results = await Promise.allSettled([
           documentsAPI.list(),
           reviewsAPI.list(),
           termsAPI.list(),
           checkItemsAPI.list(),
         ])
 
+        // 成功した結果だけ使用、失敗は空配列で表示
+        const documents = results[0].status === 'fulfilled' ? results[0].value : []
+        const reviews = results[1].status === 'fulfilled' ? results[1].value : []
+        const terms = results[2].status === 'fulfilled' ? results[2].value : []
+        const checkItems = results[3].status === 'fulfilled' ? results[3].value : []
+
         setStats({
           documents: documents.length,
           reviews: reviews.length,
           terms: terms.length,
           checkItems: checkItems.length,
-          pendingFindings: reviews.reduce((sum, r) => sum + (r.finding_count || 0), 0),
+          pendingFindings: reviews.reduce((sum: number, r: Review) => sum + (r.finding_count || 0), 0),
         })
 
         setRecentReviews(reviews.slice(0, 5))
@@ -157,7 +163,7 @@ function StatsCard({
 }: {
   title: string
   value: number
-  icon: any
+  icon: React.ElementType
   href: string
 }) {
   return (

@@ -4,18 +4,23 @@
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
-// Generic fetch wrapper
+// Generic fetch wrapper with timeout
 export async function fetchAPI<T>(
   endpoint: string,
   options?: RequestInit
 ): Promise<T> {
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-    ...options,
-  })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 10000)
+
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options?.headers,
+      },
+      ...options,
+      signal: controller.signal,
+    })
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
@@ -28,6 +33,14 @@ export async function fetchAPI<T>(
   }
 
   return response.json()
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      throw new Error('サーバーに接続できません。バックエンドが起動しているか確認してください。')
+    }
+    throw err
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 // Types
@@ -224,17 +237,31 @@ export const documentsAPI = {
   },
   get: (id: number) => fetchAPI<Document>(`/api/v1/documents/${id}`),
   upload: async (file: File) => {
-    const formData = new FormData()
-    formData.append('file', file)
-    const response = await fetch(`${API_BASE}/api/v1/documents/upload`, {
-      method: 'POST',
-      body: formData,
-    })
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}))
-      throw new Error(error.detail || 'Upload failed')
+    const controller = new AbortController()
+    // アップロードは大きいファイルに対応するため120秒タイムアウト
+    const timeout = setTimeout(() => controller.abort(), 120000)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const response = await fetch(`${API_BASE}/api/v1/documents/upload`, {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+      })
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}))
+        throw new Error(error.detail || 'Upload failed')
+      }
+      return response.json()
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        throw new Error('アップロードがタイムアウトしました。ファイルサイズを確認してください。')
+      }
+      throw err
+    } finally {
+      clearTimeout(timeout)
     }
-    return response.json()
   },
   delete: (id: number) =>
     fetchAPI<void>(`/api/v1/documents/${id}`, { method: 'DELETE' }),

@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Header } from '@/components/layout/header'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Upload, FileText, Trash2, Play, Eye, RefreshCw } from 'lucide-react'
-import { documentsAPI, Document, checkItemsAPI, reviewsAPI } from '@/lib/api'
+import { documentsAPI, Document, CheckItem, checkItemsAPI, reviewsAPI, fetchAPI } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 
 export default function DocumentsPage() {
@@ -43,6 +44,13 @@ export default function DocumentsPage() {
       return
     }
 
+    // フロントエンドでのサイズ事前チェック（50MB上限）
+    const MAX_SIZE_MB = 50
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      alert(`ファイルサイズが${MAX_SIZE_MB}MBを超えています`)
+      return
+    }
+
     setUploading(true)
     try {
       await documentsAPI.upload(file)
@@ -65,6 +73,7 @@ export default function DocumentsPage() {
       loadDocuments()
     } catch (error) {
       console.error('Failed to delete document:', error)
+      alert('文書の削除に失敗しました')
     }
   }
 
@@ -174,12 +183,16 @@ export default function DocumentsPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => {
-                                // Trigger OCR again
-                                fetch(
-                                  `${process.env.NEXT_PUBLIC_API_URL}/api/v1/documents/${doc.id}/ocr`,
-                                  { method: 'POST' }
-                                ).then(() => loadDocuments())
+                              onClick={async () => {
+                                try {
+                                  await fetchAPI(`/api/v1/documents/${doc.id}/ocr`, {
+                                    method: 'POST',
+                                  })
+                                  loadDocuments()
+                                } catch (error) {
+                                  console.error('OCR retry failed:', error)
+                                  alert('OCR再処理の開始に失敗しました')
+                                }
                               }}
                             >
                               <RefreshCw className="mr-1 h-4 w-4" />
@@ -225,10 +238,12 @@ function ReviewStartModal({
   document: Document
   onClose: () => void
 }) {
-  const [checkItems, setCheckItems] = useState<any[]>([])
+  const router = useRouter()
+  const [checkItems, setCheckItems] = useState<CheckItem[]>([])
   const [selectedItems, setSelectedItems] = useState<number[]>([])
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     loadCheckItems()
@@ -238,10 +253,10 @@ function ReviewStartModal({
     try {
       const items = await checkItemsAPI.list({ is_active: true })
       setCheckItems(items)
-      // Select all by default
-      setSelectedItems(items.map((i: any) => i.id))
+      setSelectedItems(items.map((i) => i.id))
     } catch (error) {
       console.error('Failed to load check items:', error)
+      setError('チェック項目の読み込みに失敗しました。バックエンドが起動しているか確認してください。')
     } finally {
       setLoading(false)
     }
@@ -249,18 +264,18 @@ function ReviewStartModal({
 
   async function handleStartReview() {
     if (selectedItems.length === 0) {
-      alert('チェック項目を選択してください')
+      setError('チェック項目を選択してください')
       return
     }
 
     setStarting(true)
+    setError(null)
     try {
       const review = await reviewsAPI.create(document.id, selectedItems)
-      window.location.href = `/reviews/${review.id}`
+      router.push(`/reviews/${review.id}`)
     } catch (error) {
       console.error('Failed to start review:', error)
-      alert('レビューの開始に失敗しました')
-    } finally {
+      setError('レビューの開始に失敗しました。バックエンドが起動しているか確認してください。')
       setStarting(false)
     }
   }
@@ -331,12 +346,25 @@ function ReviewStartModal({
           )}
         </div>
 
+        {error && (
+          <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={starting}>
             キャンセル
           </Button>
-          <Button onClick={handleStartReview} disabled={starting}>
-            {starting ? 'レビュー開始中...' : 'レビューを開始'}
+          <Button onClick={handleStartReview} disabled={starting || loading}>
+            {starting ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                レビュー開始中...
+              </>
+            ) : (
+              'レビューを開始'
+            )}
           </Button>
         </div>
       </div>

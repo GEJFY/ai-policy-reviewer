@@ -1,29 +1,23 @@
 @echo off
-chcp 65001 >nul
 echo ========================================
-echo   規程レビューツール - テスト実行
+echo   AI Policy Reviewer - Run Tests
 echo ========================================
 echo.
 
-cd /d "%~dp0backend"
+cd /d C:\dev-pr\backend
 
-REM 仮想環境をアクティベート
-if exist "venv\Scripts\activate.bat" (
-    call venv\Scripts\activate.bat
-)
-
-echo [1/2] テストを実行中...
-python -m pytest tests/ -v --tb=short
+echo [1/2] Running tests...
+C:\Users\goyos\.venvs\ai-policy-reviewer3\Scripts\python.exe -m pytest tests/ -v --tb=short
 
 echo.
-echo [2/2] カバレッジ付きでテストを実行...
-python -m pytest tests/ --cov=app --cov-report=term-missing --cov-report=html
+echo [2/2] Running tests with coverage...
+C:\Users\goyos\.venvs\ai-policy-reviewer3\Scripts\python.exe -m pytest tests/ --cov=app --cov-report=term-missing --cov-report=html
 
 echo.
 echo ========================================
-echo   テスト完了
+echo   Tests Complete
 echo ========================================
 echo.
-echo カバレッジレポート: backend\htmlcov\index.html
+echo Coverage report: backend\htmlcov\index.html
 echo.
 pause

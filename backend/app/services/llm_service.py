@@ -447,30 +447,22 @@ class UnifiedLLMService:
         self._initialize_clients()
 
     def _initialize_clients(self):
-        """全プロバイダーのクライアントを初期化"""
-        # Azure
-        azure_client = AzureOpenAIClient()
-        if azure_client.is_available():
-            self.clients[LLMProvider.AZURE] = azure_client
-            self.circuit_breakers[LLMProvider.AZURE] = azure_openai_breaker
+        """アクティブプロバイダーのクライアントを初期化（起動高速化）"""
+        provider_init_map = {
+            LLMProvider.AZURE: (AzureOpenAIClient, azure_openai_breaker),
+            LLMProvider.AWS_BEDROCK: (AWSBedrockClient, aws_bedrock_breaker),
+            LLMProvider.GCP_VERTEX: (GCPVertexClient, gcp_vertex_breaker),
+            LLMProvider.LOCAL: (OllamaClient, ollama_breaker),
+        }
 
-        # AWS Bedrock
-        bedrock_client = AWSBedrockClient()
-        if bedrock_client.is_available():
-            self.clients[LLMProvider.AWS_BEDROCK] = bedrock_client
-            self.circuit_breakers[LLMProvider.AWS_BEDROCK] = aws_bedrock_breaker
-
-        # GCP Vertex AI
-        vertex_client = GCPVertexClient()
-        if vertex_client.is_available():
-            self.clients[LLMProvider.GCP_VERTEX] = vertex_client
-            self.circuit_breakers[LLMProvider.GCP_VERTEX] = gcp_vertex_breaker
-
-        # Local (Ollama)
-        ollama_client = OllamaClient()
-        if ollama_client.is_available():
-            self.clients[LLMProvider.LOCAL] = ollama_client
-            self.circuit_breakers[LLMProvider.LOCAL] = ollama_breaker
+        # アクティブプロバイダーのみ初期化
+        configured = settings.llm_provider
+        if configured in provider_init_map:
+            client_cls, breaker = provider_init_map[configured]
+            client = client_cls()
+            if client.is_available():
+                self.clients[configured] = client
+                self.circuit_breakers[configured] = breaker
 
         # アクティブプロバイダーを設定
         if settings.llm_provider in self.clients:
