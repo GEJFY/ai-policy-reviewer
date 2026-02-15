@@ -239,6 +239,7 @@ class RateLimitMiddleware:
 
         # デバッグモードではレート制限を無効化
         from app.config import settings
+
         if settings.debug:
             await self.app(scope, receive, send)
             return

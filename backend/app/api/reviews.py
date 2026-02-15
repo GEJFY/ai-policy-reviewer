@@ -433,7 +433,6 @@ async def execute_review_task(review_id: int, check_item_ids: list[int]):
         ReviewEngine内で実装されている。
     """
     import asyncio
-    import traceback as tb
     from app.db.database import SessionLocal
 
     # レビュータスクのタイムアウト（10分）
