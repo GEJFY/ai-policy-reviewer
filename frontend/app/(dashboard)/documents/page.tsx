@@ -10,6 +10,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Upload, FileText, Trash2, Play, Eye, RefreshCw } from 'lucide-react'
 import { documentsAPI, Document, CheckItem, checkItemsAPI, reviewsAPI, fetchAPI } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
+import { useToast } from '@/components/ui/toast'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 
 export default function DocumentsPage() {
   const [documents, setDocuments] = useState<Document[]>([])
@@ -18,6 +20,8 @@ export default function DocumentsPage() {
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { showToast } = useToast()
+  const { confirm } = useConfirm()
 
   useEffect(() => {
     loadDocuments()
@@ -40,24 +44,25 @@ export default function DocumentsPage() {
     if (!file) return
 
     if (!file.name.toLowerCase().endsWith('.pdf')) {
-      alert('PDFファイルのみアップロード可能です')
+      showToast('PDFファイルのみアップロード可能です', 'error')
       return
     }
 
     // フロントエンドでのサイズ事前チェック（50MB上限）
     const MAX_SIZE_MB = 50
     if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-      alert(`ファイルサイズが${MAX_SIZE_MB}MBを超えています`)
+      showToast(`ファイルサイズが${MAX_SIZE_MB}MBを超えています`, 'error')
       return
     }
 
     setUploading(true)
     try {
       await documentsAPI.upload(file)
+      showToast('アップロードが完了しました', 'success')
       loadDocuments()
     } catch (error) {
       console.error('Upload failed:', error)
-      alert('アップロードに失敗しました')
+      showToast('アップロードに失敗しました', 'error')
     } finally {
       setUploading(false)
       if (fileInputRef.current) {
@@ -67,13 +72,15 @@ export default function DocumentsPage() {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm('この文書を削除しますか？')) return
+    const ok = await confirm({ message: 'この文書を削除しますか？' })
+    if (!ok) return
     try {
       await documentsAPI.delete(id)
+      showToast('文書を削除しました', 'success')
       loadDocuments()
     } catch (error) {
       console.error('Failed to delete document:', error)
-      alert('文書の削除に失敗しました')
+      showToast('文書の削除に失敗しました', 'error')
     }
   }
 
@@ -188,10 +195,11 @@ export default function DocumentsPage() {
                                   await fetchAPI(`/api/v1/documents/${doc.id}/ocr`, {
                                     method: 'POST',
                                   })
+                                  showToast('OCR再処理を開始しました', 'info')
                                   loadDocuments()
                                 } catch (error) {
                                   console.error('OCR retry failed:', error)
-                                  alert('OCR再処理の開始に失敗しました')
+                                  showToast('OCR再処理の開始に失敗しました', 'error')
                                 }
                               }}
                             >

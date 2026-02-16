@@ -8,6 +8,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { checkItemsAPI, CheckItem, CheckItemCreate } from '@/lib/api'
+import { useToast } from '@/components/ui/toast'
+import { useConfirm } from '@/components/ui/confirm-dialog'
 
 const CATEGORIES = [
   { value: 'TERMINOLOGY', label: '用語統一' },
@@ -31,6 +33,8 @@ export default function CheckItemsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [showForm, setShowForm] = useState(false)
   const [editingItem, setEditingItem] = useState<CheckItem | null>(null)
+  const { showToast } = useToast()
+  const { confirm } = useConfirm()
 
   useEffect(() => {
     loadItems()
@@ -51,12 +55,15 @@ export default function CheckItemsPage() {
   }
 
   async function handleDelete(id: number) {
-    if (!confirm('このチェック項目を削除しますか？')) return
+    const ok = await confirm({ message: 'このチェック項目を削除しますか？' })
+    if (!ok) return
     try {
       await checkItemsAPI.delete(id)
+      showToast('チェック項目を削除しました', 'success')
       loadItems()
     } catch (error) {
       console.error('Failed to delete check item:', error)
+      showToast('チェック項目の削除に失敗しました', 'error')
     }
   }
 
@@ -221,10 +228,12 @@ function CheckItemFormModal({
     is_active: item?.is_active ?? true,
   })
   const [saving, setSaving] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
+    setFormError(null)
     try {
       if (item) {
         await checkItemsAPI.update(item.id, formData)
@@ -234,7 +243,7 @@ function CheckItemFormModal({
       onSaved()
     } catch (error) {
       console.error('Failed to save check item:', error)
-      alert('保存に失敗しました')
+      setFormError('保存に失敗しました')
     } finally {
       setSaving(false)
     }
@@ -339,6 +348,12 @@ function CheckItemFormModal({
               有効にする
             </label>
           </div>
+
+          {formError && (
+            <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+              {formError}
+            </div>
+          )}
 
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>

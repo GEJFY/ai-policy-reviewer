@@ -1,5 +1,6 @@
 """Vector store service for similarity search."""
 
+import logging
 import struct
 import math
 from typing import Optional
@@ -8,6 +9,8 @@ from sqlalchemy.orm import Session
 from app.models.term import Term
 from app.models.document import DocumentChunk
 from app.services.embedding_service import UnifiedEmbeddingService
+
+logger = logging.getLogger(__name__)
 
 
 class VectorStore:
@@ -65,23 +68,33 @@ class VectorStore:
         Returns:
             List of (term, similarity_score) tuples
         """
-        # Query terms with embeddings
-        query = db.query(Term).filter(Term.embedding.isnot(None))
-        if category:
-            query = query.filter(Term.category == category)
+        try:
+            # Query terms with embeddings
+            query = db.query(Term).filter(Term.embedding.isnot(None))
+            if category:
+                query = query.filter(Term.category == category)
 
-        terms = query.all()
+            terms = query.all()
 
-        # Calculate similarities
-        results = []
-        for term in terms:
-            term_embedding = self._bytes_to_embedding(term.embedding)
-            similarity = self.cosine_similarity(query_embedding, term_embedding)
-            results.append((term, similarity))
+            # Calculate similarities
+            results = []
+            for term in terms:
+                try:
+                    term_embedding = self._bytes_to_embedding(term.embedding)
+                    similarity = self.cosine_similarity(query_embedding, term_embedding)
+                    results.append((term, similarity))
+                except (struct.error, ValueError) as e:
+                    logger.warning(
+                        f"Skipping term with invalid embedding | "
+                        f"term_id={term.id} | error={e}"
+                    )
 
-        # Sort by similarity (descending) and return top_k
-        results.sort(key=lambda x: x[1], reverse=True)
-        return results[:top_k]
+            # Sort by similarity (descending) and return top_k
+            results.sort(key=lambda x: x[1], reverse=True)
+            return results[:top_k]
+        except Exception as e:
+            logger.error(f"Term similarity search failed | error={e}")
+            return []
 
     def search_similar_chunks(
         self,
@@ -102,23 +115,35 @@ class VectorStore:
         Returns:
             List of (chunk, similarity_score) tuples
         """
-        # Query chunks with embeddings
-        query = db.query(DocumentChunk).filter(DocumentChunk.embedding.isnot(None))
-        if document_id:
-            query = query.filter(DocumentChunk.document_id == document_id)
+        try:
+            # Query chunks with embeddings
+            query = db.query(DocumentChunk).filter(DocumentChunk.embedding.isnot(None))
+            if document_id:
+                query = query.filter(DocumentChunk.document_id == document_id)
 
-        chunks = query.all()
+            chunks = query.all()
 
-        # Calculate similarities
-        results = []
-        for chunk in chunks:
-            chunk_embedding = self._bytes_to_embedding(chunk.embedding)
-            similarity = self.cosine_similarity(query_embedding, chunk_embedding)
-            results.append((chunk, similarity))
+            # Calculate similarities
+            results = []
+            for chunk in chunks:
+                try:
+                    chunk_embedding = self._bytes_to_embedding(chunk.embedding)
+                    similarity = self.cosine_similarity(
+                        query_embedding, chunk_embedding
+                    )
+                    results.append((chunk, similarity))
+                except (struct.error, ValueError) as e:
+                    logger.warning(
+                        f"Skipping chunk with invalid embedding | "
+                        f"chunk_id={chunk.id} | error={e}"
+                    )
 
-        # Sort by similarity (descending) and return top_k
-        results.sort(key=lambda x: x[1], reverse=True)
-        return results[:top_k]
+            # Sort by similarity (descending) and return top_k
+            results.sort(key=lambda x: x[1], reverse=True)
+            return results[:top_k]
+        except Exception as e:
+            logger.error(f"Chunk similarity search failed | error={e}")
+            return []
 
     @staticmethod
     def _bytes_to_embedding(data: bytes) -> list[float]:
