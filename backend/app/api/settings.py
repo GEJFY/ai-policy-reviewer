@@ -27,7 +27,7 @@ def _mask_url_key(url: str) -> str:
     if not url:
         return ""
     # URLパス内のキーっぽいパターンをマスク
-    return re.sub(r'(key|token|secret)=[^&]+', r'\1=***', url, flags=re.IGNORECASE)
+    return re.sub(r"(key|token|secret)=[^&]+", r"\1=***", url, flags=re.IGNORECASE)
 
 
 @router.get("/")
@@ -49,7 +49,9 @@ async def get_settings() -> dict[str, Any]:
             "provider": settings.llm_provider.value,
             "model": settings.get_effective_model(),
             "tier": settings.llm_tier.value if settings.llm_tier else None,
-            "available_providers": [p.value for p in settings.get_available_providers()],
+            "available_providers": [
+                p.value for p in settings.get_available_providers()
+            ],
         },
         "providers": {
             "azure": {
@@ -135,4 +137,4 @@ def _mask_database_url(url: str) -> str:
     if url.startswith("sqlite"):
         return url
     # postgresql://user:password@host/db → マスク
-    return re.sub(r'://([^:]+):([^@]+)@', r'://\1:***@', url)
+    return re.sub(r"://([^:]+):([^@]+)@", r"://\1:***@", url)
