@@ -114,16 +114,19 @@ export default function DocumentsPage() {
               <div>
                 <input
                   ref={fileInputRef}
+                  id="file-upload"
                   type="file"
                   accept=".pdf"
                   onChange={handleUpload}
                   className="hidden"
+                  aria-label="PDFファイルを選択"
                 />
                 <Button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
+                  aria-label={uploading ? 'アップロード中' : 'PDFファイルを選択してアップロード'}
                 >
-                  <Upload className="mr-2 h-4 w-4" />
+                  <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
                   {uploading ? 'アップロード中...' : 'ファイルを選択'}
                 </Button>
               </div>
@@ -135,25 +138,25 @@ export default function DocumentsPage() {
         <Card>
           <CardContent className="p-0">
             {loading ? (
-              <div className="p-8 text-center text-gray-500">読み込み中...</div>
+              <div className="p-8 text-center text-gray-500" role="status" aria-live="polite">読み込み中...</div>
             ) : documents.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
+              <div className="p-8 text-center text-gray-500" role="status">
                 文書が登録されていません
               </div>
             ) : (
-              <table className="w-full">
+              <table className="w-full" aria-label="文書一覧">
                 <thead className="border-b bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       タイトル
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       OCR状態
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       登録日時
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       操作
                     </th>
                   </tr>
@@ -163,7 +166,7 @@ export default function DocumentsPage() {
                     <tr key={doc.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <FileText className="h-5 w-5 text-gray-400" />
+                          <FileText className="h-5 w-5 text-gray-400" aria-hidden="true" />
                           <span className="font-medium">{doc.title}</span>
                         </div>
                       </td>
@@ -211,8 +214,9 @@ export default function DocumentsPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDelete(doc.id)}
+                            aria-label={`${doc.title}を削除`}
                           >
-                            <Trash2 className="h-4 w-4 text-red-500" />
+                            <Trash2 className="h-4 w-4 text-red-500" aria-hidden="true" />
                           </Button>
                         </div>
                       </td>
@@ -303,9 +307,9 @@ function ReviewStartModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl max-h-[80vh] overflow-y-auto">
-        <h3 className="mb-4 text-lg font-semibold">レビューを開始</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="presentation">
+      <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl max-h-[80vh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="review-modal-title">
+        <h3 id="review-modal-title" className="mb-4 text-lg font-semibold">レビューを開始</h3>
         <p className="mb-4 text-sm text-gray-600">
           文書: <span className="font-medium">{document.title}</span>
         </p>
@@ -355,7 +359,7 @@ function ReviewStartModal({
         </div>
 
         {error && (
-          <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
+          <div role="alert" className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
             {error}
           </div>
         )}
@@ -367,7 +371,7 @@ function ReviewStartModal({
           <Button onClick={handleStartReview} disabled={starting || loading}>
             {starting ? (
               <>
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
                 レビュー開始中...
               </>
             ) : (

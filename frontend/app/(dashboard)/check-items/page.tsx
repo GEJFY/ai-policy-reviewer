@@ -95,6 +95,7 @@ export default function CheckItemsPage() {
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
             className="rounded-md border border-gray-200 px-3 py-2 text-sm"
+            aria-label="カテゴリでフィルタ"
           >
             <option value="">すべてのカテゴリ</option>
             {CATEGORIES.map((cat) => (
@@ -104,7 +105,7 @@ export default function CheckItemsPage() {
             ))}
           </select>
           <Button onClick={() => { setEditingItem(null); setShowForm(true); }}>
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
             新規登録
           </Button>
         </div>
@@ -113,31 +114,31 @@ export default function CheckItemsPage() {
         <Card>
           <CardContent className="p-0">
             {loading ? (
-              <div className="p-8 text-center text-gray-500">読み込み中...</div>
+              <div className="p-8 text-center text-gray-500" role="status" aria-live="polite">読み込み中...</div>
             ) : items.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
+              <div className="p-8 text-center text-gray-500" role="status">
                 チェック項目が登録されていません
               </div>
             ) : (
-              <table className="w-full">
+              <table className="w-full" aria-label="チェック項目一覧">
                 <thead className="border-b bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       項目名
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       カテゴリ
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       重要度
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       状態
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       説明
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       操作
                     </th>
                   </tr>
@@ -159,10 +160,11 @@ export default function CheckItemsPage() {
                       <td className="px-4 py-3">
                         <button
                           onClick={() => handleToggleActive(item)}
+                          aria-pressed={item.is_active}
                           className={`rounded-full px-2 py-1 text-xs ${
                             item.is_active
                               ? 'bg-green-100 text-green-700'
-                              : 'bg-gray-100 text-gray-500'
+                              : 'bg-gray-100 text-gray-700'
                           }`}
                         >
                           {item.is_active ? '有効' : '無効'}
@@ -177,15 +179,17 @@ export default function CheckItemsPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => { setEditingItem(item); setShowForm(true); }}
+                            aria-label={`${item.name}を編集`}
                           >
-                            <Pencil className="h-4 w-4" />
+                            <Pencil className="h-4 w-4" aria-hidden="true" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDelete(item.id)}
+                            aria-label={`${item.name}を削除`}
                           >
-                            <Trash2 className="h-4 w-4 text-red-500" />
+                            <Trash2 className="h-4 w-4 text-red-500" aria-hidden="true" />
                           </Button>
                         </div>
                       </td>
@@ -251,8 +255,8 @@ function CheckItemFormModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
-        <h3 className="mb-4 text-lg font-semibold">
+      <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="check-item-form-title">
+        <h3 id="check-item-form-title" className="mb-4 text-lg font-semibold">
           {item ? 'チェック項目を編集' : 'チェック項目を登録'}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -350,7 +354,7 @@ function CheckItemFormModal({
           </div>
 
           {formError && (
-            <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
+            <div className="rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
               {formError}
             </div>
           )}

@@ -81,13 +81,14 @@ export default function TermsPage() {
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
               <Input
                 placeholder="用語を検索..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 className="pl-9 w-64"
+                aria-label="用語を検索"
               />
             </div>
             <Button variant="outline" onClick={handleSearch}>
@@ -108,7 +109,7 @@ export default function TermsPage() {
               ))}
             </select>
             <Button onClick={() => { setEditingTerm(null); setShowForm(true); }}>
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
               新規登録
             </Button>
           </div>
@@ -118,28 +119,28 @@ export default function TermsPage() {
         <Card>
           <CardContent className="p-0">
             {loading ? (
-              <div className="p-8 text-center text-gray-500">読み込み中...</div>
+              <div className="p-8 text-center text-gray-500" role="status" aria-live="polite">読み込み中...</div>
             ) : filteredTerms.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
+              <div className="p-8 text-center text-gray-500" role="status">
                 用語が登録されていません
               </div>
             ) : (
-              <table className="w-full">
+              <table className="w-full" aria-label="用語辞書一覧">
                 <thead className="border-b bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       用語
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       別名
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       カテゴリ
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       定義
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       操作
                     </th>
                   </tr>
@@ -163,15 +164,17 @@ export default function TermsPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => { setEditingTerm(term); setShowForm(true); }}
+                            aria-label={`${term.term}を編集`}
                           >
-                            <Pencil className="h-4 w-4" />
+                            <Pencil className="h-4 w-4" aria-hidden="true" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDelete(term.id)}
+                            aria-label={`${term.term}を削除`}
                           >
-                            <Trash2 className="h-4 w-4 text-red-500" />
+                            <Trash2 className="h-4 w-4 text-red-500" aria-hidden="true" />
                           </Button>
                         </div>
                       </td>
@@ -252,8 +255,8 @@ function TermFormModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
-        <h3 className="mb-4 text-lg font-semibold">
+      <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-labelledby="term-form-title">
+        <h3 id="term-form-title" className="mb-4 text-lg font-semibold">
           {term ? '用語を編集' : '用語を登録'}
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -297,6 +300,7 @@ function TermFormModal({
                       type="button"
                       onClick={() => removeAlias(alias)}
                       className="ml-1 hover:text-red-500"
+                      aria-label="エイリアスを削除"
                     >
                       ×
                     </button>

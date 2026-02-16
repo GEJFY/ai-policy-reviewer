@@ -177,7 +177,7 @@ export default function ReviewDetailPage() {
       <>
         <Header title="レビュー詳細" />
         <div className="p-6">
-          <div className="text-center text-gray-500">読み込み中...</div>
+          <div className="text-center text-gray-500" role="status" aria-live="polite">読み込み中...</div>
         </div>
       </>
     )
@@ -192,17 +192,17 @@ export default function ReviewDetailPage() {
             href="/reviews"
             className="mb-4 inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
           >
-            <ArrowLeft className="mr-1 h-4 w-4" />
+            <ArrowLeft className="mr-1 h-4 w-4" aria-hidden="true" />
             レビュー一覧に戻る
           </Link>
           <Card className="mt-4">
             <CardContent className="p-8 text-center">
-              <AlertCircle className="mx-auto mb-3 h-10 w-10 text-red-400" />
+              <AlertCircle className="mx-auto mb-3 h-10 w-10 text-red-400" aria-hidden="true" />
               <p className="text-gray-600 mb-4">
                 {error || 'レビューが見つかりません'}
               </p>
               <Button onClick={() => { setLoading(true); setError(null); loadReview() }}>
-                <RefreshCw className="mr-2 h-4 w-4" />
+                <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
                 再読み込み
               </Button>
             </CardContent>
@@ -221,7 +221,7 @@ export default function ReviewDetailPage() {
           href="/reviews"
           className="mb-4 inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
         >
-          <ArrowLeft className="mr-1 h-4 w-4" />
+          <ArrowLeft className="mr-1 h-4 w-4" aria-hidden="true" />
           レビュー一覧に戻る
         </Link>
 
@@ -232,8 +232,8 @@ export default function ReviewDetailPage() {
               <span>{review.document_title || `文書 #${review.document_id}`}</span>
               {(review.status === 'pending' || review.status === 'processing') && (
                 <div className="flex items-center gap-2 text-yellow-600">
-                  <RefreshCw className="h-5 w-5 animate-spin" />
-                  <span className="text-sm">
+                  <RefreshCw className="h-5 w-5 animate-spin" aria-hidden="true" />
+                  <span className="text-sm" role="status" aria-live="polite">
                     {review.status === 'pending' ? 'レビュー準備中...' : 'AIがレビュー中...'}
                   </span>
                 </div>
@@ -246,13 +246,13 @@ export default function ReviewDetailPage() {
                 <p className="text-sm text-gray-500">ステータス</p>
                 <div className="flex items-center gap-2 mt-1">
                   {review.status === 'completed' && (
-                    <CheckCircle className="h-5 w-5 text-green-500" />
+                    <CheckCircle className="h-5 w-5 text-green-500" aria-hidden="true" />
                   )}
                   {(review.status === 'pending' || review.status === 'processing') && (
-                    <Clock className="h-5 w-5 text-yellow-500" />
+                    <Clock className="h-5 w-5 text-yellow-500" aria-hidden="true" />
                   )}
                   {review.status === 'failed' && (
-                    <XCircle className="h-5 w-5 text-red-500" />
+                    <XCircle className="h-5 w-5 text-red-500" aria-hidden="true" />
                   )}
                   <span className="font-medium">
                     {review.status === 'completed'
@@ -289,12 +289,12 @@ export default function ReviewDetailPage() {
 
         {/* Bulk Actions */}
         {selectedFindings.length > 0 && (
-          <div className="mb-4 flex items-center gap-4 rounded-lg bg-blue-50 p-4">
+          <div className="mb-4 flex items-center gap-4 rounded-lg bg-blue-50 p-4" aria-live="polite" aria-atomic="true">
             <span className="text-sm font-medium">
               {selectedFindings.length} 件選択中
             </span>
             <Button size="sm" onClick={handleBulkApprove}>
-              <Check className="mr-1 h-4 w-4" />
+              <Check className="mr-1 h-4 w-4" aria-hidden="true" />
               一括承認
             </Button>
             <Button
@@ -309,7 +309,7 @@ export default function ReviewDetailPage() {
 
         {/* Action Error */}
         {actionError && (
-          <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
+          <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700" role="alert">
             {actionError}
           </div>
         )}
@@ -320,6 +320,7 @@ export default function ReviewDetailPage() {
             value={severityFilter}
             onChange={(e) => setSeverityFilter(e.target.value)}
             className="rounded-md border border-gray-200 px-3 py-2 text-sm"
+            aria-label="重要度でフィルタ"
           >
             <option value="">すべての重要度</option>
             <option value="HIGH">HIGH</option>
@@ -330,6 +331,7 @@ export default function ReviewDetailPage() {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="rounded-md border border-gray-200 px-3 py-2 text-sm"
+            aria-label="ステータスでフィルタ"
           >
             <option value="">すべてのステータス</option>
             <option value="PENDING">未対応</option>
@@ -427,9 +429,9 @@ export default function ReviewDetailPage() {
                           disabled={actionLoading === finding.id}
                         >
                           {actionLoading === finding.id ? (
-                            <RefreshCw className="mr-1 h-4 w-4 animate-spin" />
+                            <RefreshCw className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />
                           ) : (
-                            <Check className="mr-1 h-4 w-4" />
+                            <Check className="mr-1 h-4 w-4" aria-hidden="true" />
                           )}
                           承認
                         </Button>
@@ -439,7 +441,7 @@ export default function ReviewDetailPage() {
                           onClick={() => handleDefer(finding.id)}
                           disabled={actionLoading === finding.id}
                         >
-                          <Pause className="mr-1 h-4 w-4" />
+                          <Pause className="mr-1 h-4 w-4" aria-hidden="true" />
                           保留
                         </Button>
                         <Button
@@ -448,7 +450,7 @@ export default function ReviewDetailPage() {
                           onClick={() => handleReject(finding.id)}
                           disabled={actionLoading === finding.id}
                         >
-                          <X className="mr-1 h-4 w-4" />
+                          <X className="mr-1 h-4 w-4" aria-hidden="true" />
                           却下
                         </Button>
                       </div>
