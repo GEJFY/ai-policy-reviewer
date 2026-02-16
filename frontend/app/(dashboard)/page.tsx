@@ -108,9 +108,9 @@ export default function DashboardPage() {
           <Card>
             <CardContent className="p-0">
               {loading ? (
-                <div className="p-8 text-center text-gray-500">読み込み中...</div>
+                <div className="p-8 text-center text-gray-500" role="status" aria-live="polite">読み込み中...</div>
               ) : recentReviews.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
+                <div className="p-8 text-center text-gray-500" role="status">
                   レビューがありません
                 </div>
               ) : (
@@ -173,7 +173,7 @@ function StatsCard({
           <CardTitle className="text-sm font-medium text-gray-500">
             {title}
           </CardTitle>
-          <Icon className="h-5 w-5 text-gray-400" />
+          <Icon className="h-5 w-5 text-gray-400" aria-hidden="true" />
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{value}</div>
@@ -184,14 +184,22 @@ function StatsCard({
 }
 
 function StatusIcon({ status }: { status: string }) {
+  const labels: Record<string, string> = {
+    completed: '完了',
+    processing: '処理中',
+    failed: '失敗',
+    pending: '待機中',
+  }
+  const label = labels[status] || '待機中'
+
   switch (status) {
     case 'completed':
-      return <CheckCircle className="h-5 w-5 text-green-500" />
+      return <CheckCircle className="h-5 w-5 text-green-500" aria-hidden="true" role="img" />
     case 'processing':
-      return <Clock className="h-5 w-5 text-yellow-500" />
+      return <Clock className="h-5 w-5 text-yellow-500" aria-hidden="true" role="img" />
     case 'failed':
-      return <AlertCircle className="h-5 w-5 text-red-500" />
+      return <AlertCircle className="h-5 w-5 text-red-500" aria-hidden="true" role="img" />
     default:
-      return <Clock className="h-5 w-5 text-gray-400" />
+      return <Clock className="h-5 w-5 text-gray-400" aria-hidden="true" role="img" />
   }
 }

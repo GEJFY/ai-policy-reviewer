@@ -46,13 +46,13 @@ export default function ReviewsPage() {
   function getStatusIcon(status: string) {
     switch (status) {
       case 'completed':
-        return <CheckCircle className="h-5 w-5 text-green-500" />
+        return <CheckCircle className="h-5 w-5 text-green-500" aria-hidden="true" />
       case 'processing':
-        return <Clock className="h-5 w-5 text-yellow-500" />
+        return <Clock className="h-5 w-5 text-yellow-500" aria-hidden="true" />
       case 'failed':
-        return <XCircle className="h-5 w-5 text-red-500" />
+        return <XCircle className="h-5 w-5 text-red-500" aria-hidden="true" />
       default:
-        return <Clock className="h-5 w-5 text-gray-400" />
+        return <Clock className="h-5 w-5 text-gray-400" aria-hidden="true" />
     }
   }
 
@@ -95,28 +95,28 @@ export default function ReviewsPage() {
         <Card>
           <CardContent className="p-0">
             {loading ? (
-              <div className="p-8 text-center text-gray-500">読み込み中...</div>
+              <div className="p-8 text-center text-gray-500" role="status" aria-live="polite">読み込み中...</div>
             ) : reviews.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
+              <div className="p-8 text-center text-gray-500" role="status">
                 レビューがありません
               </div>
             ) : (
-              <table className="w-full">
+              <table className="w-full" aria-label="レビュー一覧">
                 <thead className="border-b bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       文書
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       ステータス
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       指摘数
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       実行日時
                     </th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                    <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       操作
                     </th>
                   </tr>
@@ -166,7 +166,7 @@ export default function ReviewsPage() {
                         <div className="flex gap-2">
                           <Link href={`/reviews/${review.id}`}>
                             <Button variant="outline" size="sm">
-                              <Eye className="mr-1 h-4 w-4" />
+                              <Eye className="mr-1 h-4 w-4" aria-hidden="true" />
                               詳細
                             </Button>
                           </Link>
@@ -174,8 +174,9 @@ export default function ReviewsPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDelete(review.id)}
+                            aria-label={`${review.document_title || `文書 #${review.document_id}`}を削除`}
                           >
-                            <Trash2 className="h-4 w-4 text-red-500" />
+                            <Trash2 className="h-4 w-4 text-red-500" aria-hidden="true" />
                           </Button>
                         </div>
                       </td>

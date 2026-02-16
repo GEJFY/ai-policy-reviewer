@@ -56,9 +56,9 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   }, [onClose])
 
   const icon = {
-    success: <CheckCircle className="h-5 w-5 text-green-500" />,
-    error: <AlertCircle className="h-5 w-5 text-red-500" />,
-    info: <Info className="h-5 w-5 text-blue-500" />,
+    success: <CheckCircle className="h-5 w-5 text-green-500" aria-hidden="true" />,
+    error: <AlertCircle className="h-5 w-5 text-red-500" aria-hidden="true" />,
+    info: <Info className="h-5 w-5 text-blue-500" aria-hidden="true" />,
   }[toast.type]
 
   const bg = {
@@ -70,12 +70,12 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   return (
     <div
       className={`flex items-center gap-3 rounded-lg border px-4 py-3 shadow-lg animate-in slide-in-from-right ${bg}`}
-      role="alert"
+      role={toast.type === 'error' ? 'alert' : 'status'}
     >
       {icon}
       <span className="text-sm font-medium text-gray-800">{toast.message}</span>
-      <button onClick={onClose} className="ml-2 text-gray-400 hover:text-gray-600">
-        <X className="h-4 w-4" />
+      <button onClick={onClose} className="ml-2 text-gray-400 hover:text-gray-600" aria-label="通知を閉じる">
+        <X className="h-4 w-4" aria-hidden="true" />
       </button>
     </div>
   )

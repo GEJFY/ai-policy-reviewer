@@ -13,8 +13,14 @@ export default function DashboardLayout({
     <ToastProvider>
       <ConfirmProvider>
         <div className="flex h-screen">
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:absolute focus:z-[200] focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium"
+          >
+            メインコンテンツへスキップ
+          </a>
           <Sidebar />
-          <main className="flex-1 overflow-auto bg-gray-50">
+          <main id="main-content" className="flex-1 overflow-auto bg-gray-50">
             {children}
           </main>
         </div>
