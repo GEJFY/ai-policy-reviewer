@@ -563,8 +563,7 @@ class TestOllamaConnectionIntegration:
         except Exception as e:
             err_msg = str(e).lower()
             if any(
-                kw in err_msg
-                for kw in ["not found", "connection", "memory", "500"]
+                kw in err_msg for kw in ["not found", "connection", "memory", "500"]
             ):
                 pytest.skip(f"Ollama not available: {e}")
             raise
