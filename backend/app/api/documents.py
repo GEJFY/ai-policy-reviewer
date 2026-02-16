@@ -50,17 +50,16 @@ from app.services.chunking_service import chunking_service
 from app.services.embedding_service import embedding_service
 from app.core.logging_config import get_logger
 from app.core.exceptions import FileTooLargeError
+from app.config import settings
 
 # モジュール専用ロガー
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/documents", tags=["Documents"])
 
-# Upload directory
-UPLOAD_DIR = "./data/uploads"
-
-# ファイルサイズ上限（50MB）
-MAX_FILE_SIZE = 50 * 1024 * 1024
+# Upload directory / ファイルサイズ上限（設定から取得）
+UPLOAD_DIR = settings.upload_dir
+MAX_FILE_SIZE = settings.max_file_size_mb * 1024 * 1024
 
 
 @router.get("", response_model=list[DocumentResponse])
