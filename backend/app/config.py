@@ -185,12 +185,13 @@ class Settings(BaseSettings):
     secret_key: str = "dev-secret-key"
     debug: bool = True
 
-    # CORS (開発用: 複数ポート対応)
+    # Upload
+    upload_dir: str = "./data/uploads"
+    max_file_size_mb: int = 50
+
+    # CORS (環境変数 CORS_ORIGINS でカンマ区切り指定可能)
     cors_origins: list[str] = [
         "http://localhost:3030",
-        "http://localhost:3031",
-        "http://localhost:3032",
-        "http://localhost:3033",
     ]
 
     class Config:

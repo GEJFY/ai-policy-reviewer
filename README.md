@@ -29,7 +29,7 @@ AIを活用した社内規程文書のレビューシステムです。マルチ
 ┌─────────────────────┐     ┌─────────────────────┐
 │    フロントエンド     │     │     バックエンド      │
 │    Next.js 16       │────▶│    FastAPI          │
-│    Port: 3033       │     │    Port: 8004       │
+│    Port: 3030       │     │    Port: 8080       │
 └─────────────────────┘     └──────────┬──────────┘
                                        │
                     ┌──────────────────┼──────────────────┐
@@ -182,7 +182,7 @@ python -m app.db.seed_data
 
 # サーバー起動（DISABLE_SQLALCHEMY_CEXT_RUNTIME=1 が必要）
 set DISABLE_SQLALCHEMY_CEXT_RUNTIME=1
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8004
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8080
 ```
 
 ### 4. フロントエンドのセットアップ
@@ -194,19 +194,19 @@ cd frontend
 npm install
 
 # 環境変数（バックエンドURL）
-# frontend/.env.local を作成（デフォルト: http://localhost:8004）
-echo NEXT_PUBLIC_API_URL=http://localhost:8004 > .env.local
+# frontend/.env.local を作成（デフォルト: http://localhost:8080）
+echo NEXT_PUBLIC_API_URL=http://localhost:8080 > .env.local
 
 # 開発サーバー起動（日本語パスでは --webpack が必須）
-npx next dev --port 3033 --webpack
+npx next dev --port 3030 --webpack
 ```
 
 ### 5. アクセス
 
-- フロントエンド: http://localhost:3033
-- バックエンドAPI: http://localhost:8004
-- APIドキュメント: http://localhost:8004/docs
-- ヘルスチェック: http://localhost:8004/health
+- フロントエンド: http://localhost:3030
+- バックエンドAPI: http://localhost:8080
+- APIドキュメント: http://localhost:8080/docs
+- ヘルスチェック: http://localhost:8080/health
 
 ## プロジェクト構造
 
@@ -282,10 +282,13 @@ ai-policy-reviewer/
 
 | エンドポイント | メソッド | 説明 |
 |--------------|---------|------|
+| `/api/v1/findings/{id}` | GET | 指摘事項詳細 |
 | `/api/v1/findings/{id}/approve` | PUT | 承認 |
 | `/api/v1/findings/{id}/reject` | PUT | 却下 |
 | `/api/v1/findings/{id}/defer` | PUT | 保留 |
-| `/api/v1/reviews/{id}/findings/bulk-update` | POST | 一括更新 |
+| `/api/v1/findings/{id}/reset` | PUT | ステータスリセット（PENDINGに戻す） |
+| `/api/v1/reviews/{id}/findings/summary` | GET | 指摘事項サマリー統計 |
+| `/api/v1/reviews/{id}/findings/bulk-approve` | POST | 一括承認/却下/保留 |
 
 ### システム
 
@@ -328,13 +331,13 @@ GitHub Actionsで自動実行:
 
 1. `DISABLE_SQLALCHEMY_CEXT_RUNTIME=1` 環境変数を設定しているか確認
 2. `.env`ファイルの設定を確認
-3. ポート8004が空いているか確認: `netstat -ano | findstr 8004`
+3. ポート8080が空いているか確認: `netstat -ano | findstr 8080`
 
 ### フロントエンドが起動しない
 
 1. 日本語パスの場合は `--webpack` フラグが必須
 2. `NEXT_PUBLIC_API_URL` が正しく設定されているか確認
-3. ポート3033が空いているか確認
+3. ポート3030が空いているか確認
 
 ### LLMプロバイダーの接続エラー
 
@@ -351,7 +354,7 @@ GitHub Actionsで自動実行:
 ### レビューが完了しない
 
 1. レビューには最大10分のタイムアウトが設定されています
-2. LLMプロバイダーの接続状態を確認: `curl http://localhost:8004/health/detailed`
+2. LLMプロバイダーの接続状態を確認: `curl http://localhost:8080/health/detailed`
 3. レビュー詳細ページでステータスを確認（3〜10秒間隔で自動更新）
 
 ### データベースエラー
