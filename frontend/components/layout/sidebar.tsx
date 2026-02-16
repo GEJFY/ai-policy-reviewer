@@ -54,7 +54,12 @@ export function Sidebar() {
       <div className="border-t border-gray-800 p-4">
         <Link
           href="/settings"
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-800 hover:text-white"
+          className={cn(
+            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+            pathname === '/settings'
+              ? 'bg-gray-800 text-white'
+              : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+          )}
         >
           <Settings className="h-5 w-5" />
           設定
