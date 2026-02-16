@@ -10,7 +10,7 @@ from typing import Any
 
 from fastapi import APIRouter
 
-from app.config import settings, MODEL_TIER_DEFAULTS, LLMProvider, ModelTier
+from app.config import settings, MODEL_TIER_DEFAULTS, LLMProvider
 
 router = APIRouter(prefix="/api/v1/settings", tags=["Settings"])
 
