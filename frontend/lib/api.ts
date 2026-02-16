@@ -149,7 +149,115 @@ export interface Finding {
   created_at: string
 }
 
+// Settings types
+export interface SystemSettings {
+  system: {
+    version: string
+    debug: boolean
+    database_url: string
+  }
+  llm: {
+    provider: string
+    model: string
+    tier: string | null
+    available_providers: string[]
+  }
+  providers: {
+    azure: {
+      configured: boolean
+      endpoint: string
+      api_key: string
+      deployment: string
+      embedding_deployment: string
+      api_version: string
+      use_v1_api: boolean
+    }
+    aws_bedrock: {
+      configured: boolean
+      region: string
+      access_key_id: string
+      model_id: string
+      embedding_model: string
+    }
+    gcp_vertex: {
+      configured: boolean
+      project_id: string
+      location: string
+      model: string
+      embedding_model: string
+      credentials_path: boolean
+    }
+    ollama: {
+      configured: boolean
+      base_url: string
+      model: string
+      embedding_model: string
+    }
+  }
+  embedding: {
+    provider: string
+  }
+  ocr: {
+    provider: string
+    azure_doc_intel: {
+      configured: boolean
+      endpoint: string
+    }
+    tesseract: {
+      configured: boolean
+      lang: string
+    }
+  }
+  app: {
+    upload_dir: string
+    max_file_size_mb: number
+    cors_origins: string[]
+  }
+  validation: {
+    is_valid: boolean
+    missing: string[]
+    warnings: string[]
+  }
+}
+
+export interface HealthDetailed {
+  status: string
+  version: string
+  environment: string
+  checks: {
+    database: { healthy: boolean; latency_ms?: number; error?: string }
+    llm_service: {
+      healthy: boolean
+      active_provider: string | null
+      available_providers: string[]
+      error?: string
+    }
+    ocr_service: {
+      healthy: boolean
+      active_provider: string
+      available_providers: string[]
+      configured: boolean
+      note: string | null
+      error?: string
+    }
+  }
+  circuit_breakers: Record<string, {
+    state: string
+    failure_count: number
+    time_until_retry: number | null
+    stats: { total_calls: number; failed_calls: number; rejected_calls: number }
+  }>
+  timestamp: string
+}
+
 // API Functions
+
+// Settings
+export const settingsAPI = {
+  get: () => fetchAPI<SystemSettings>('/api/v1/settings/'),
+  getModels: () => fetchAPI<{ models: Record<string, { tier: string; model: string }[]> }>('/api/v1/settings/models'),
+  getHealth: () => fetchAPI<HealthDetailed>('/health/detailed'),
+}
 
 // Terms
 export const termsAPI = {

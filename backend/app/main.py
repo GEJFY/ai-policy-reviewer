@@ -17,6 +17,7 @@ from app.config import settings, validate_and_log_config
 from app.api import (
     auth,
     health,
+    settings as settings_api,
     terms,
     check_items,
     writing_rules,
@@ -119,6 +120,7 @@ logger.info("Application initialized successfully")
 # Include routers
 app.include_router(auth.router)
 app.include_router(health.router, tags=["Health"])
+app.include_router(settings_api.router)
 app.include_router(terms.router)
 app.include_router(check_items.router)
 app.include_router(writing_rules.router)
