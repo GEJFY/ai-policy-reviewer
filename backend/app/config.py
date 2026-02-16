@@ -153,7 +153,7 @@ class Settings(BaseSettings):
 
     # GCP Vertex AI
     gcp_project_id: str = ""
-    gcp_location: str = "global"  # Gemini 3はglobalエンドポイントのみ
+    gcp_location: str = "us-central1"
     gcp_credentials_path: str = ""  # サービスアカウントJSONパス
     gcp_vertex_model: str = "gemini-3-flash-preview"
 
