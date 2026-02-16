@@ -34,6 +34,9 @@ class FindingBase(BaseModel):
     description: str = Field(..., description="問題の説明")
     suggestion: str | None = Field(default=None, description="改善提案")
     rationale: str | None = Field(default=None, description="指摘根拠")
+    confidence: float | None = Field(
+        default=None, ge=0.0, le=1.0, description="AI信頼度スコア (0.0-1.0)"
+    )
 
 
 class FindingResponse(FindingBase):

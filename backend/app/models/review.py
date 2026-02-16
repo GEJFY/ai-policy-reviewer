@@ -1,6 +1,6 @@
 """Review and ReviewFinding models."""
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, Float, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -66,6 +66,7 @@ class ReviewFinding(Base):
     description = Column(Text, nullable=False)
     suggestion = Column(Text)  # Suggested correction
     rationale = Column(Text)  # Reason for the finding
+    confidence = Column(Float)  # AI confidence score (0.0-1.0)
     status = Column(String(20), default="PENDING")  # PENDING/APPROVED/REJECTED/DEFERRED
     reviewed_by = Column(String(255))
     reviewed_at = Column(DateTime)
