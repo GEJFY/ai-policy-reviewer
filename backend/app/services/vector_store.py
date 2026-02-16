@@ -54,6 +54,7 @@ class VectorStore:
         db: Session,
         query_embedding: list[float],
         top_k: int = 10,
+        min_similarity: float = 0.3,
         category: Optional[str] = None,
     ) -> list[tuple[Term, float]]:
         """
@@ -63,10 +64,11 @@ class VectorStore:
             db: Database session
             query_embedding: Query embedding vector
             top_k: Number of results to return
+            min_similarity: Minimum similarity threshold (0.0-1.0)
             category: Optional category filter
 
         Returns:
-            List of (term, similarity_score) tuples
+            List of (term, similarity_score) tuples above threshold
         """
         try:
             # Query terms with embeddings
@@ -82,7 +84,8 @@ class VectorStore:
                 try:
                     term_embedding = self._bytes_to_embedding(term.embedding)
                     similarity = self.cosine_similarity(query_embedding, term_embedding)
-                    results.append((term, similarity))
+                    if similarity >= min_similarity:
+                        results.append((term, similarity))
                 except (struct.error, ValueError) as e:
                     logger.warning(
                         f"Skipping term with invalid embedding | "
@@ -91,6 +94,10 @@ class VectorStore:
 
             # Sort by similarity (descending) and return top_k
             results.sort(key=lambda x: x[1], reverse=True)
+            logger.debug(
+                f"Term search | candidates={len(terms)} | "
+                f"above_threshold={len(results)} | top_k={top_k}"
+            )
             return results[:top_k]
         except Exception as e:
             logger.error(f"Term similarity search failed | error={e}")
@@ -102,6 +109,7 @@ class VectorStore:
         query_embedding: list[float],
         document_id: Optional[int] = None,
         top_k: int = 10,
+        min_similarity: float = 0.3,
     ) -> list[tuple[DocumentChunk, float]]:
         """
         Search for similar document chunks using cosine similarity.
@@ -111,9 +119,10 @@ class VectorStore:
             query_embedding: Query embedding vector
             document_id: Optional document filter
             top_k: Number of results to return
+            min_similarity: Minimum similarity threshold (0.0-1.0)
 
         Returns:
-            List of (chunk, similarity_score) tuples
+            List of (chunk, similarity_score) tuples above threshold
         """
         try:
             # Query chunks with embeddings
@@ -131,7 +140,8 @@ class VectorStore:
                     similarity = self.cosine_similarity(
                         query_embedding, chunk_embedding
                     )
-                    results.append((chunk, similarity))
+                    if similarity >= min_similarity:
+                        results.append((chunk, similarity))
                 except (struct.error, ValueError) as e:
                     logger.warning(
                         f"Skipping chunk with invalid embedding | "
@@ -140,6 +150,10 @@ class VectorStore:
 
             # Sort by similarity (descending) and return top_k
             results.sort(key=lambda x: x[1], reverse=True)
+            logger.debug(
+                f"Chunk search | candidates={len(chunks)} | "
+                f"above_threshold={len(results)} | top_k={top_k}"
+            )
             return results[:top_k]
         except Exception as e:
             logger.error(f"Chunk similarity search failed | error={e}")

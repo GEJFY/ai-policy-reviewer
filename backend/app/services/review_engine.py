@@ -271,6 +271,7 @@ class ReviewEngine:
                 description=finding_data.get("description", ""),
                 suggestion=finding_data.get("suggestion"),
                 rationale=finding_data.get("rationale"),
+                confidence=finding_data.get("confidence"),
                 status="PENDING",
             )
             db.add(db_finding)
@@ -375,6 +376,20 @@ class ReviewEngine:
                     skipped += 1
                     continue
 
+                # confidenceをLLM出力から取得、なければseverityから推定
+                raw_confidence = f.get("confidence")
+                if raw_confidence is not None:
+                    try:
+                        confidence = min(1.0, max(0.0, float(raw_confidence)))
+                    except (ValueError, TypeError):
+                        confidence = None
+                else:
+                    # severityベースのデフォルト信頼度
+                    severity_val = f.get("severity", "MEDIUM").upper()
+                    confidence = {"HIGH": 0.9, "MEDIUM": 0.7, "LOW": 0.5}.get(
+                        severity_val, 0.7
+                    )
+
                 normalized.append(
                     {
                         "location": f.get("location", ""),
@@ -384,6 +399,7 @@ class ReviewEngine:
                         "description": f.get("description", ""),
                         "suggestion": f.get("suggestion"),
                         "rationale": f.get("rationale"),
+                        "confidence": confidence,
                     }
                 )
 
