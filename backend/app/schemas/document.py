@@ -47,6 +47,7 @@ class DocumentChunkResponse(BaseModel):
     id: int
     document_id: int
     chunk_index: int
+    section_title: str | None = None
     content: str
     created_at: datetime
 

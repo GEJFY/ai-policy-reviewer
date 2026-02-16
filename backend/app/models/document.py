@@ -41,6 +41,7 @@ class DocumentChunk(Base):
     id = Column(Integer, primary_key=True, index=True)
     document_id = Column(Integer, ForeignKey("documents.id"), nullable=False)
     chunk_index = Column(Integer, nullable=False)
+    section_title = Column(String(500))  # Section header (e.g. "第1条", "第2章")
     content = Column(Text, nullable=False)
     embedding = Column(LargeBinary)  # float32 array bytes
     created_at = Column(DateTime, server_default=func.now())
