@@ -111,6 +111,8 @@ class AzureDocIntelOCRService(BaseOCRService):
         from azure.ai.documentintelligence.models import AnalyzeResult
 
         try:
+            if not self.client:
+                raise RuntimeError("Azure Document Intelligence client not initialized")
             poller = self.client.begin_analyze_document(
                 model_id="prebuilt-read",
                 body=content,

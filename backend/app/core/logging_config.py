@@ -73,7 +73,7 @@ class ColoredFormatter(logging.Formatter):
 # ============================================================
 def setup_logging(
     level: str = "INFO",
-    log_file: Optional[str] = None,
+    log_file: Optional[str | Path] = None,
     json_format: bool = False,
 ) -> None:
     """
@@ -92,6 +92,8 @@ def setup_logging(
     root_logger.handlers.clear()
 
     # フォーマット設定
+    formatter: logging.Formatter
+    console_formatter: logging.Formatter
     if json_format:
         formatter = JsonFormatter()
         console_formatter = formatter

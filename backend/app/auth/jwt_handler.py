@@ -64,7 +64,7 @@ class JWTHandler:
     def create_access_token(
         self,
         user_id: str,
-        roles: list[str] = None,
+        roles: list[str] | None = None,
         expires_delta: Optional[timedelta] = None,
     ) -> str:
         """
@@ -131,7 +131,7 @@ class JWTHandler:
     def create_token_pair(
         self,
         user_id: str,
-        roles: list[str] = None,
+        roles: list[str] | None = None,
     ) -> TokenPair:
         """
         アクセストークンとリフレッシュトークンのペアを生成。
@@ -192,7 +192,7 @@ class JWTHandler:
             return None
 
     def refresh_access_token(
-        self, refresh_token: str, roles: list[str] = None
+        self, refresh_token: str, roles: list[str] | None = None
     ) -> Optional[str]:
         """
         リフレッシュトークンを使用して新しいアクセストークンを生成。

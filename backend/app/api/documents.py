@@ -90,7 +90,7 @@ async def get_document(document_id: int, db: Session = Depends(get_db)):
 @router.post("/upload", response_model=DocumentUploadResponse, status_code=201)
 async def upload_document(
     file: UploadFile = File(...),
-    background_tasks: BackgroundTasks = None,
+    background_tasks: BackgroundTasks = None,  # type: ignore[assignment]
     db: Session = Depends(get_db),
 ):
     """
@@ -128,14 +128,15 @@ async def upload_document(
         Azure Document Intelligenceが利用不可の場合はPyPDF2で代替処理。
     """
     # Validate file type
-    if not file.filename.lower().endswith(".pdf"):
+    filename = file.filename or "unknown.pdf"
+    if not filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported")
 
     # Ensure upload directory exists
     os.makedirs(UPLOAD_DIR, exist_ok=True)
 
     # Generate unique filename
-    file_ext = os.path.splitext(file.filename)[1]
+    file_ext = os.path.splitext(filename)[1]
     unique_filename = f"{uuid.uuid4()}{file_ext}"
     file_path = os.path.join(UPLOAD_DIR, unique_filename)
 
@@ -151,7 +152,7 @@ async def upload_document(
 
     # Create document record
     document = Document(
-        title=file.filename,
+        title=filename,
         file_path=file_path,
         file_type="pdf",
         ocr_status="pending",

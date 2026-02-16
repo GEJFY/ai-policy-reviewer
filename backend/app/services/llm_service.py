@@ -657,8 +657,9 @@ class UnifiedLLMService:
                     if attempt >= MAX_RETRIES:
                         raise
 
-        if last_error:
-            raise last_error
+        # last_error は必ずセットされるが、mypy の到達性解析のため明示的に raise
+        assert last_error is not None  # pragma: no cover
+        raise last_error
 
     def _is_retryable_error(self, error: Exception) -> bool:
         """リトライ可能なエラーかチェック"""
