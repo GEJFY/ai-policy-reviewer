@@ -72,7 +72,7 @@ class RateLimiter:
         self._states: Dict[str, RateLimitState] = defaultdict(
             lambda: RateLimitState(tokens=100.0, last_update=time.time())
         )
-        self._lock = asyncio.Lock()
+        self._lock: Optional[asyncio.Lock] = None
         self._cleanup_interval = 300  # 5分ごとにクリーンアップ
         self._last_cleanup = time.time()
 
@@ -139,6 +139,8 @@ class RateLimiter:
         Returns:
             Tuple[bool, Dict]: (許可されたか, ヘッダー情報)
         """
+        if self._lock is None:
+            self._lock = asyncio.Lock()
         async with self._lock:
             # クリーンアップ
             await self._cleanup_if_needed()

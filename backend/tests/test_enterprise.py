@@ -5,7 +5,6 @@ Enterprise feature tests.
 相関ID、レート制限のテスト。
 """
 
-import asyncio
 import pytest
 
 from fastapi.testclient import TestClient
@@ -44,18 +43,20 @@ class TestCircuitBreaker:
         cb = self._make_breaker("test_init", failure_threshold=3)
         assert cb.state == CircuitState.CLOSED
 
-    def test_successful_call(self):
+    @pytest.mark.asyncio
+    async def test_successful_call(self):
         """成功した呼び出しでCLOSEDのままであること"""
         cb = self._make_breaker("test_success_cb", failure_threshold=3)
 
         async def success_func():
             return "ok"
 
-        result = asyncio.get_event_loop().run_until_complete(cb.call(success_func))
+        result = await cb.call(success_func)
         assert result == "ok"
         assert cb.state == CircuitState.CLOSED
 
-    def test_failure_increments_count(self):
+    @pytest.mark.asyncio
+    async def test_failure_increments_count(self):
         """失敗がカウントされること"""
         cb = self._make_breaker("test_fail_cb", failure_threshold=3)
 
@@ -63,13 +64,14 @@ class TestCircuitBreaker:
             raise ValueError("test error")
 
         with pytest.raises(ValueError):
-            asyncio.get_event_loop().run_until_complete(cb.call(fail_func))
+            await cb.call(fail_func)
 
         status = cb.get_status()
         assert status["failure_count"] == 1
         assert cb.state == CircuitState.CLOSED
 
-    def test_opens_after_threshold(self):
+    @pytest.mark.asyncio
+    async def test_opens_after_threshold(self):
         """失敗が閾値に達するとOPENになること"""
         cb = self._make_breaker(
             "test_open_cb", failure_threshold=2, recovery_timeout=60
@@ -80,11 +82,12 @@ class TestCircuitBreaker:
 
         for _ in range(2):
             with pytest.raises(ValueError):
-                asyncio.get_event_loop().run_until_complete(cb.call(fail_func))
+                await cb.call(fail_func)
 
         assert cb.state == CircuitState.OPEN
 
-    def test_open_rejects_calls(self):
+    @pytest.mark.asyncio
+    async def test_open_rejects_calls(self):
         """OPEN状態で呼び出しが拒否されること"""
         cb = self._make_breaker(
             "test_reject_cb", failure_threshold=1, recovery_timeout=60
@@ -94,12 +97,12 @@ class TestCircuitBreaker:
             raise ValueError("test error")
 
         with pytest.raises(ValueError):
-            asyncio.get_event_loop().run_until_complete(cb.call(fail_func))
+            await cb.call(fail_func)
 
         assert cb.state == CircuitState.OPEN
 
         with pytest.raises(CircuitBreakerOpenError):
-            asyncio.get_event_loop().run_until_complete(cb.call(fail_func))
+            await cb.call(fail_func)
 
     def test_get_status(self):
         """ステータスが正しく取得できること"""
@@ -110,7 +113,8 @@ class TestCircuitBreaker:
         assert "stats" in status
         assert status["stats"]["total_calls"] == 0
 
-    def test_manual_reset(self):
+    @pytest.mark.asyncio
+    async def test_manual_reset(self):
         """手動リセットが動作すること"""
         cb = self._make_breaker(
             "test_reset_cb", failure_threshold=1, recovery_timeout=60
@@ -120,10 +124,10 @@ class TestCircuitBreaker:
             raise ValueError("test error")
 
         with pytest.raises(ValueError):
-            asyncio.get_event_loop().run_until_complete(cb.call(fail_func))
+            await cb.call(fail_func)
 
         assert cb.state == CircuitState.OPEN
-        asyncio.get_event_loop().run_until_complete(cb.reset())
+        await cb.reset()
         assert cb.state == CircuitState.CLOSED
 
 

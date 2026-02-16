@@ -61,7 +61,7 @@ LLM_REQUEST_COUNT = Counter(
 LLM_TOKEN_USAGE = Counter(
     "llm_tokens_total",
     "Total tokens used in LLM requests",
-    ["provider", "type"],  # type: prompt/completion
+    ["provider", "type"],  # prompt/completion
     registry=REGISTRY,
 )
 
