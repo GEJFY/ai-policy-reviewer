@@ -350,6 +350,7 @@ class UnifiedEmbeddingService:
             Embeddingベクトル (list[float])
         """
         client = self._get_client()
+        assert self.active_provider is not None
         start_time = time.time()
         try:
             embedding = await client.get_embedding(text)
@@ -380,6 +381,7 @@ class UnifiedEmbeddingService:
             Embeddingベクトルのリスト
         """
         client = self._get_client()
+        assert self.active_provider is not None
         start_time = time.time()
         try:
             embeddings = await client.get_embeddings_batch(texts)

@@ -187,7 +187,7 @@ class AuditLogger:
         file_size: Optional[int] = None,
     ) -> None:
         """文書関連イベントをログ。"""
-        details = {}
+        details: Dict[str, Any] = {}
         if document_title:
             details["title"] = document_title
         if file_size:
@@ -229,7 +229,7 @@ class AuditLogger:
         status: Optional[str] = None,
     ) -> None:
         """指摘事項関連イベントをログ。"""
-        details = {}
+        details: Dict[str, Any] = {}
         if review_id:
             details["review_id"] = review_id
         if status:

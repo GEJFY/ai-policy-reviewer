@@ -26,8 +26,8 @@ class CurrentUser:
     def __init__(
         self,
         user_id: str,
-        roles: list[str] = None,
-        token_payload: TokenPayload = None,
+        roles: list[str] | None = None,
+        token_payload: TokenPayload | None = None,
     ):
         self.user_id = user_id
         self.roles = roles or []

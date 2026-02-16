@@ -197,6 +197,7 @@ class ChunkingService:
 
     def _chunk_by_tokens(self, text: str) -> list[str]:
         """Chunk by token count."""
+        assert self.tokenizer is not None
         tokens = self.tokenizer.encode(text)
         chunks = []
 

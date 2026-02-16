@@ -45,7 +45,7 @@ class ReviewEngine:
 
     def _log_initialization(self):
         """ログ初期化情報を出力"""
-        if llm_service.is_available():
+        if llm_service.is_available() and llm_service.active_provider:
             providers = llm_service.get_available_providers()
             provider_names = [p.value for p in providers]
             logger.info(

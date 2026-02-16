@@ -70,10 +70,10 @@ class PromptBuilder:
         """Get the appropriate template for the check item."""
         # Use custom template if available
         if check_item.prompt_template:
-            return check_item.prompt_template
+            return str(check_item.prompt_template)
 
         # Use category-specific template
-        category = check_item.category
+        category = str(check_item.category)
         if category in self.templates:
             return self.templates[category]
 
