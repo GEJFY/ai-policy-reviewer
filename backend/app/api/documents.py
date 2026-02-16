@@ -328,10 +328,12 @@ async def process_document_ocr(document_id: int):
                 f"Text extracted: document_id={document_id}, length={len(extracted_text)}"
             )
 
-            # Chunk the text
-            chunks = chunking_service.chunk_text(extracted_text)
+            # Hierarchical chunking (section-aware)
+            chunk_results = chunking_service.chunk_text_hierarchical(extracted_text)
             logger.info(
-                f"Text chunked: document_id={document_id}, chunks={len(chunks)}"
+                f"Text chunked: document_id={document_id}, "
+                f"chunks={len(chunk_results)}, "
+                f"sections={len(set(c.section_title for c in chunk_results if c.section_title))}"
             )
 
             # Delete existing chunks
@@ -340,11 +342,13 @@ async def process_document_ocr(document_id: int):
             ).delete()
 
             # Create new chunks with embeddings
-            for i, chunk_text in enumerate(chunks):
+            for i, chunk_result in enumerate(chunk_results):
                 embedding_bytes = None
                 if embedding_service.is_available():
                     try:
-                        embedding = await embedding_service.get_embedding(chunk_text)
+                        embedding = await embedding_service.get_embedding(
+                            chunk_result.content
+                        )
                         embedding_bytes = embedding_service.embedding_to_bytes(
                             embedding
                         )
@@ -356,7 +360,8 @@ async def process_document_ocr(document_id: int):
                 chunk = DocumentChunk(
                     document_id=document_id,
                     chunk_index=i,
-                    content=chunk_text,
+                    section_title=chunk_result.section_title,
+                    content=chunk_result.content,
                     embedding=embedding_bytes,
                 )
                 db.add(chunk)

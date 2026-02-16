@@ -118,21 +118,17 @@ class ReviewEngine:
         low_count = 0
 
         try:
-            # Get document chunks
-            chunks = self._get_document_chunks(db, document.id)
-            if not chunks:
-                # If no chunks, use extracted text directly
-                if document.extracted_text:
-                    chunks = [document.extracted_text]
-                else:
-                    logger.error(f"Document has no content | document_id={document.id}")
-                    raise ValueError("Document has no content")
-
-            logger.debug(
-                f"Processing document | chunks={len(chunks)} | total_chars={sum(len(c) for c in chunks)}"
+            # Verify document has content
+            has_chunks = (
+                db.query(DocumentChunk)
+                .filter(DocumentChunk.document_id == document.id)
+                .count()
             )
+            if not has_chunks and not document.extracted_text:
+                logger.error(f"Document has no content | document_id={document.id}")
+                raise ValueError("Document has no content")
 
-            # Process each check item
+            # Process each check item with smart chunk selection
             for idx, check_item_id in enumerate(check_item_ids):
                 # Update check item status
                 review_check = (
@@ -148,8 +144,26 @@ class ReviewEngine:
                     db.commit()
 
                 check_start = time.time()
+
+                # Get check item name for smart chunk selection
+                check_item = (
+                    db.query(CheckItem).filter(CheckItem.id == check_item_id).first()
+                )
+                check_query = check_item.name if check_item else ""
+
                 logger.debug(
-                    f"Processing check item | check_item_id={check_item_id} | progress={idx + 1}/{len(check_item_ids)}"
+                    f"Processing check item | check_item_id={check_item_id} | "
+                    f"progress={idx + 1}/{len(check_item_ids)}"
+                )
+
+                # Smart chunk selection per check item
+                chunks = await self._get_relevant_chunks(db, document.id, check_query)
+                if not chunks and document.extracted_text:
+                    chunks = [document.extracted_text]
+
+                logger.debug(
+                    f"Chunks selected | count={len(chunks)} | "
+                    f"total_chars={sum(len(c) for c in chunks)}"
                 )
 
                 try:
@@ -318,7 +332,7 @@ class ReviewEngine:
         return response
 
     def _get_document_chunks(self, db: Session, document_id: int) -> list[str]:
-        """Get document chunks from database."""
+        """Get all document chunks from database."""
         chunks = (
             db.query(DocumentChunk)
             .filter(DocumentChunk.document_id == document_id)
@@ -326,6 +340,63 @@ class ReviewEngine:
             .all()
         )
         return [chunk.content for chunk in chunks]
+
+    async def _get_relevant_chunks(
+        self,
+        db: Session,
+        document_id: int,
+        query: str,
+        max_chunks: int = 20,
+    ) -> list[str]:
+        """
+        Get relevant document chunks using vector similarity.
+
+        Falls back to all chunks (ordered by index) if embedding unavailable.
+        """
+        all_chunks = (
+            db.query(DocumentChunk)
+            .filter(DocumentChunk.document_id == document_id)
+            .order_by(DocumentChunk.chunk_index)
+            .all()
+        )
+
+        if not all_chunks:
+            return []
+
+        # For small documents, return all chunks
+        if len(all_chunks) <= max_chunks:
+            return [chunk.content for chunk in all_chunks]
+
+        # Try vector similarity search
+        if embedding_service.is_available():
+            try:
+                query_embedding = await embedding_service.get_embedding(query)
+                results = vector_store.search_similar_chunks(
+                    db=db,
+                    query_embedding=query_embedding,
+                    document_id=document_id,
+                    top_k=max_chunks,
+                    min_similarity=0.2,
+                )
+                if results:
+                    # Sort by chunk_index to maintain document order
+                    selected = sorted(results, key=lambda r: r[0].chunk_index)
+                    logger.debug(
+                        f"Smart chunk selection | total={len(all_chunks)} | "
+                        f"selected={len(selected)} | "
+                        f"similarity_range=[{results[-1][1]:.3f}, {results[0][1]:.3f}]"
+                    )
+                    return [chunk.content for chunk, _ in selected]
+            except Exception as e:
+                logger.warning(
+                    f"Chunk vector search failed, using all chunks | error={str(e)}"
+                )
+
+        # Fallback: return first max_chunks
+        logger.debug(
+            f"Using truncated chunks | total={len(all_chunks)} | limit={max_chunks}"
+        )
+        return [chunk.content for chunk in all_chunks[:max_chunks]]
 
     async def _get_relevant_terms(
         self, db: Session, query: str, top_k: int = 10

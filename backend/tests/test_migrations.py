@@ -51,13 +51,16 @@ class TestMigrations:
         assert rev is not None
         assert rev.down_revision == "001"
 
-    def test_migration_head_is_002(self):
-        """現在のheadが002であること。"""
+    def test_migration_head_is_latest(self):
+        """現在のheadが最新であること。"""
         config = self._get_alembic_config()
         script = ScriptDirectory.from_config(config)
 
         heads = script.get_heads()
-        assert "002" in heads
+        assert len(heads) == 1
+        # Headは数値で最大のリビジョン
+        head = heads[0]
+        assert int(head) >= 3
 
     def test_migration_002_has_upgrade_and_downgrade(self):
         """マイグレーション002にupgrade/downgrade関数があること。"""
