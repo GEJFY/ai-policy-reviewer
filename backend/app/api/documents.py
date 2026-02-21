@@ -378,11 +378,7 @@ async def process_document_ocr(document_id: int):
             )
             try:
                 db.rollback()
-                document = (
-                    db.query(Document)
-                    .filter(Document.id == document_id)
-                    .first()
-                )
+                document = db.query(Document).filter(Document.id == document_id).first()
                 if document:
                     document.ocr_status = "failed"
                     db.commit()
