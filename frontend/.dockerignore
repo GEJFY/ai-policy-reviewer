@@ -3,3 +3,5 @@ node_modules
 .git
 __tests__
 *.md
+.env.local
+.env*.local

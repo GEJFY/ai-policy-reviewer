@@ -17,6 +17,7 @@ export default function DocumentsPage() {
   const [documents, setDocuments] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 })
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -40,34 +41,54 @@ export default function DocumentsPage() {
   }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const files = e.target.files
+    if (!files || files.length === 0) return
 
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      showToast('PDFファイルのみアップロード可能です', 'error')
-      return
-    }
-
-    // フロントエンドでのサイズ事前チェック（50MB上限）
+    // バリデーション
     const MAX_SIZE_MB = 50
-    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
-      showToast(`ファイルサイズが${MAX_SIZE_MB}MBを超えています`, 'error')
-      return
+    const validFiles: File[] = []
+    for (const file of Array.from(files)) {
+      if (!file.name.toLowerCase().endsWith('.pdf')) {
+        showToast(`${file.name}: PDFファイルのみアップロード可能です`, 'error')
+        continue
+      }
+      if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+        showToast(`${file.name}: ファイルサイズが${MAX_SIZE_MB}MBを超えています`, 'error')
+        continue
+      }
+      validFiles.push(file)
     }
+
+    if (validFiles.length === 0) return
 
     setUploading(true)
-    try {
-      await documentsAPI.upload(file)
-      showToast('アップロードが完了しました', 'success')
-      loadDocuments()
-    } catch (error) {
-      console.error('Upload failed:', error)
-      showToast('アップロードに失敗しました', 'error')
-    } finally {
-      setUploading(false)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
+    setUploadProgress({ current: 0, total: validFiles.length })
+
+    let successCount = 0
+    let failCount = 0
+    for (let i = 0; i < validFiles.length; i++) {
+      setUploadProgress({ current: i + 1, total: validFiles.length })
+      try {
+        await documentsAPI.upload(validFiles[i])
+        successCount++
+      } catch (error) {
+        console.error(`Upload failed: ${validFiles[i].name}`, error)
+        failCount++
       }
+    }
+
+    if (successCount > 0) {
+      showToast(`${successCount}件のアップロードが完了しました`, 'success')
+    }
+    if (failCount > 0) {
+      showToast(`${failCount}件のアップロードに失敗しました`, 'error')
+    }
+
+    loadDocuments()
+    setUploading(false)
+    setUploadProgress({ current: 0, total: 0 })
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
     }
   }
 
@@ -108,7 +129,7 @@ export default function DocumentsPage() {
               <div>
                 <h3 className="text-lg font-semibold">文書をアップロード</h3>
                 <p className="text-sm text-gray-500">
-                  PDF形式のファイルをアップロードしてください
+                  PDF形式のファイルをアップロードしてください（複数選択可）
                 </p>
               </div>
               <div>
@@ -117,6 +138,7 @@ export default function DocumentsPage() {
                   id="file-upload"
                   type="file"
                   accept=".pdf"
+                  multiple
                   onChange={handleUpload}
                   className="hidden"
                   aria-label="PDFファイルを選択"
@@ -127,7 +149,11 @@ export default function DocumentsPage() {
                   aria-label={uploading ? 'アップロード中' : 'PDFファイルを選択してアップロード'}
                 >
                   <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
-                  {uploading ? 'アップロード中...' : 'ファイルを選択'}
+                  {uploading
+                    ? uploadProgress.total > 1
+                      ? `アップロード中 (${uploadProgress.current}/${uploadProgress.total})...`
+                      : 'アップロード中...'
+                    : 'ファイルを選択'}
                 </Button>
               </div>
             </div>
