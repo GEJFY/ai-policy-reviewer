@@ -36,14 +36,13 @@ services:
   # Frontend (Next.js) - 全プロファイル共通
   # ===========================================================================
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8080
     container_name: policy-reviewer-frontend
     ports:
       - "3030:3030"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8080
     depends_on:
