@@ -11,27 +11,15 @@ import {
   BookOpen,
   CheckSquare,
   AlertCircle,
+  AlertTriangle,
   CheckCircle,
   Clock,
+  PenLine,
 } from 'lucide-react'
-import { reviewsAPI, documentsAPI, termsAPI, checkItemsAPI, Review } from '@/lib/api'
-
-interface Stats {
-  documents: number
-  reviews: number
-  terms: number
-  checkItems: number
-  pendingFindings: number
-}
+import { dashboardAPI, reviewsAPI, DashboardStats, Review } from '@/lib/api'
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<Stats>({
-    documents: 0,
-    reviews: 0,
-    terms: 0,
-    checkItems: 0,
-    pendingFindings: 0,
-  })
+  const [stats, setStats] = useState<DashboardStats | null>(null)
   const [recentReviews, setRecentReviews] = useState<Review[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -39,27 +27,16 @@ export default function DashboardPage() {
     async function loadData() {
       try {
         const results = await Promise.allSettled([
-          documentsAPI.list(),
+          dashboardAPI.getStats(),
           reviewsAPI.list(),
-          termsAPI.list(),
-          checkItemsAPI.list(),
         ])
 
-        // 成功した結果だけ使用、失敗は空配列で表示
-        const documents = results[0].status === 'fulfilled' ? results[0].value : []
-        const reviews = results[1].status === 'fulfilled' ? results[1].value : []
-        const terms = results[2].status === 'fulfilled' ? results[2].value : []
-        const checkItems = results[3].status === 'fulfilled' ? results[3].value : []
-
-        setStats({
-          documents: documents.length,
-          reviews: reviews.length,
-          terms: terms.length,
-          checkItems: checkItems.length,
-          pendingFindings: reviews.reduce((sum: number, r: Review) => sum + (r.finding_count || 0), 0),
-        })
-
-        setRecentReviews(reviews.slice(0, 5))
+        if (results[0].status === 'fulfilled') {
+          setStats(results[0].value)
+        }
+        if (results[1].status === 'fulfilled') {
+          setRecentReviews(results[1].value.slice(0, 5))
+        }
       } catch (error) {
         console.error('Failed to load dashboard data:', error)
       } finally {
@@ -75,32 +52,135 @@ export default function DashboardPage() {
       <Header title="ダッシュボード" />
       <div className="p-6">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-5">
           <StatsCard
             title="登録文書"
-            value={stats.documents}
+            value={stats?.document_count ?? 0}
             icon={FileText}
             href="/documents"
           />
           <StatsCard
             title="レビュー"
-            value={stats.reviews}
+            value={stats?.review_count ?? 0}
             icon={FileSearch}
             href="/reviews"
           />
           <StatsCard
             title="用語辞書"
-            value={stats.terms}
+            value={stats?.term_count ?? 0}
             icon={BookOpen}
             href="/terms"
           />
           <StatsCard
             title="チェック項目"
-            value={stats.checkItems}
+            value={stats?.check_item_count ?? 0}
             icon={CheckSquare}
             href="/check-items"
           />
+          <StatsCard
+            title="記載ルール"
+            value={stats?.writing_rule_count ?? 0}
+            icon={PenLine}
+            href="/writing-rules"
+          />
         </div>
+
+        {/* Finding & Review Summary */}
+        {stats && stats.finding_total > 0 && (
+          <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
+            {/* Finding Severity */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-gray-500">
+                  指摘事項（重要度別）
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-end gap-4">
+                  <div className="text-3xl font-bold">{stats.finding_total}</div>
+                  <div className="mb-1 text-sm text-gray-500">件</div>
+                </div>
+                <div className="mt-4 flex gap-3">
+                  {stats.finding_by_severity.high > 0 && (
+                    <Badge variant="destructive">
+                      <AlertCircle className="mr-1 h-3 w-3" aria-hidden="true" />
+                      HIGH {stats.finding_by_severity.high}
+                    </Badge>
+                  )}
+                  {stats.finding_by_severity.medium > 0 && (
+                    <Badge variant="warning">
+                      <AlertTriangle className="mr-1 h-3 w-3" aria-hidden="true" />
+                      MEDIUM {stats.finding_by_severity.medium}
+                    </Badge>
+                  )}
+                  {stats.finding_by_severity.low > 0 && (
+                    <Badge variant="secondary">
+                      LOW {stats.finding_by_severity.low}
+                    </Badge>
+                  )}
+                </div>
+                {/* Progress bar */}
+                <div className="mt-4 flex h-2 overflow-hidden rounded-full bg-gray-100">
+                  {stats.finding_by_severity.high > 0 && (
+                    <div
+                      className="bg-red-500"
+                      style={{ width: `${(stats.finding_by_severity.high / stats.finding_total) * 100}%` }}
+                    />
+                  )}
+                  {stats.finding_by_severity.medium > 0 && (
+                    <div
+                      className="bg-yellow-500"
+                      style={{ width: `${(stats.finding_by_severity.medium / stats.finding_total) * 100}%` }}
+                    />
+                  )}
+                  {stats.finding_by_severity.low > 0 && (
+                    <div
+                      className="bg-gray-400"
+                      style={{ width: `${(stats.finding_by_severity.low / stats.finding_total) * 100}%` }}
+                    />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Finding Status */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-gray-500">
+                  レビュー対応状況
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-sm text-gray-500">未対応</div>
+                    <div className="text-2xl font-bold text-orange-600">
+                      {stats.finding_by_status.pending}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500">承認済み</div>
+                    <div className="text-2xl font-bold text-green-600">
+                      {stats.finding_by_status.approved}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500">却下</div>
+                    <div className="text-2xl font-bold text-red-600">
+                      {stats.finding_by_status.rejected}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-500">保留</div>
+                    <div className="text-2xl font-bold text-gray-600">
+                      {stats.finding_by_status.deferred}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* Recent Reviews */}
         <div className="mt-8">
@@ -184,14 +264,6 @@ function StatsCard({
 }
 
 function StatusIcon({ status }: { status: string }) {
-  const labels: Record<string, string> = {
-    completed: '完了',
-    processing: '処理中',
-    failed: '失敗',
-    pending: '待機中',
-  }
-  const label = labels[status] || '待機中'
-
   switch (status) {
     case 'completed':
       return <CheckCircle className="h-5 w-5 text-green-500" aria-hidden="true" role="img" />

@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings, validate_and_log_config
 from app.api import (
     auth,
+    dashboard,
     health,
     settings as settings_api,
     terms,
@@ -119,6 +120,7 @@ logger.info("Application initialized successfully")
 
 # Include routers
 app.include_router(auth.router)
+app.include_router(dashboard.router)
 app.include_router(health.router, tags=["Health"])
 app.include_router(settings_api.router)
 app.include_router(terms.router)

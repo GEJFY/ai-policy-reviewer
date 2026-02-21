@@ -250,7 +250,25 @@ export interface HealthDetailed {
   timestamp: string
 }
 
+// Dashboard types
+export interface DashboardStats {
+  document_count: number
+  review_count: number
+  term_count: number
+  check_item_count: number
+  writing_rule_count: number
+  finding_total: number
+  finding_by_severity: { high: number; medium: number; low: number }
+  finding_by_status: { pending: number; approved: number; rejected: number; deferred: number }
+  review_by_status: { pending: number; processing: number; completed: number; failed: number }
+}
+
 // API Functions
+
+// Dashboard
+export const dashboardAPI = {
+  getStats: () => fetchAPI<DashboardStats>('/api/v1/dashboard/stats'),
+}
 
 // Settings
 export const settingsAPI = {
