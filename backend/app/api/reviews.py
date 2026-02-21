@@ -297,7 +297,7 @@ async def create_review(
         db.commit()
         raise HTTPException(
             status_code=503,
-            detail="Review engine not available. Check Azure OpenAI configuration.",
+            detail="Review engine not available. Check LLM provider configuration.",
         )
 
     # Schedule review execution

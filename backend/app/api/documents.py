@@ -90,7 +90,7 @@ async def get_document(document_id: int, db: Session = Depends(get_db)):
 @router.post("/upload", response_model=DocumentUploadResponse, status_code=201)
 async def upload_document(
     file: UploadFile = File(...),
-    background_tasks: BackgroundTasks = None,  # type: ignore[assignment]
+    background_tasks: BackgroundTasks = None,
     db: Session = Depends(get_db),
 ):
     """
