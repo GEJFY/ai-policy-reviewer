@@ -24,7 +24,8 @@ API endpoints for Review management.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
-from sqlalchemy.orm import Session
+from sqlalchemy import case, func as sa_func
+from sqlalchemy.orm import Session, joinedload
 from typing import Optional
 
 from app.db.database import get_db
@@ -93,21 +94,50 @@ async def list_reviews(
     if status:
         query = query.filter(Review.status == status)
 
-    reviews = query.order_by(Review.created_at.desc()).offset(skip).limit(limit).all()
+    reviews = (
+        query.options(joinedload(Review.document))
+        .order_by(Review.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
-    # Enrich with details
+    if not reviews:
+        return []
+
+    # 集計クエリ: 全レビューの severity 別 finding 件数を1クエリで取得
+    review_ids = [r.id for r in reviews]
+    counts = (
+        db.query(
+            ReviewFinding.review_id,
+            sa_func.count(ReviewFinding.id).label("total"),
+            sa_func.sum(case((ReviewFinding.severity == "HIGH", 1), else_=0)).label(
+                "high"
+            ),
+            sa_func.sum(case((ReviewFinding.severity == "MEDIUM", 1), else_=0)).label(
+                "medium"
+            ),
+            sa_func.sum(case((ReviewFinding.severity == "LOW", 1), else_=0)).label(
+                "low"
+            ),
+        )
+        .filter(ReviewFinding.review_id.in_(review_ids))
+        .group_by(ReviewFinding.review_id)
+        .all()
+    )
+    count_map = {
+        row.review_id: {
+            "total": row.total,
+            "high": int(row.high or 0),
+            "medium": int(row.medium or 0),
+            "low": int(row.low or 0),
+        }
+        for row in counts
+    }
+
     result = []
     for review in reviews:
-        document = db.query(Document).filter(Document.id == review.document_id).first()
-
-        # Get finding counts
-        findings = (
-            db.query(ReviewFinding).filter(ReviewFinding.review_id == review.id).all()
-        )
-        high_count = sum(1 for f in findings if f.severity == "HIGH")
-        medium_count = sum(1 for f in findings if f.severity == "MEDIUM")
-        low_count = sum(1 for f in findings if f.severity == "LOW")
-
+        c = count_map.get(review.id, {"total": 0, "high": 0, "medium": 0, "low": 0})
         result.append(
             ReviewDetailResponse(
                 id=review.id,
@@ -115,11 +145,11 @@ async def list_reviews(
                 status=review.status,
                 created_at=review.created_at,
                 completed_at=review.completed_at,
-                document_title=document.title if document else None,
-                finding_count=len(findings),
-                high_count=high_count,
-                medium_count=medium_count,
-                low_count=low_count,
+                document_title=review.document.title if review.document else None,
+                finding_count=c["total"],
+                high_count=c["high"],
+                medium_count=c["medium"],
+                low_count=c["low"],
             )
         )
 
@@ -151,38 +181,48 @@ async def get_review(review_id: int, db: Session = Depends(get_db)):
         レビュー実行中（status=processing）の場合、
         check_items.statusで各チェック項目の進捗を確認できる。
     """
-    review = db.query(Review).filter(Review.id == review_id).first()
+    review = (
+        db.query(Review)
+        .options(joinedload(Review.document))
+        .filter(Review.id == review_id)
+        .first()
+    )
     if not review:
         raise HTTPException(status_code=404, detail="Review not found")
 
-    # Get document
-    document = db.query(Document).filter(Document.id == review.document_id).first()
-
-    # Get check items status
-    check_items_status = []
-    review_check_items = (
-        db.query(ReviewCheckItem).filter(ReviewCheckItem.review_id == review_id).all()
+    # チェック項目ステータスを1クエリで取得（JOINで名前も取得）
+    check_items_rows = (
+        db.query(ReviewCheckItem.check_item_id, CheckItem.name, ReviewCheckItem.status)
+        .join(CheckItem, CheckItem.id == ReviewCheckItem.check_item_id)
+        .filter(ReviewCheckItem.review_id == review_id)
+        .all()
     )
-    for rci in review_check_items:
-        check_item = (
-            db.query(CheckItem).filter(CheckItem.id == rci.check_item_id).first()
+    check_items_status = [
+        ReviewCheckItemStatus(
+            check_item_id=row.check_item_id,
+            check_item_name=row.name,
+            status=row.status,
         )
-        if check_item:
-            check_items_status.append(
-                ReviewCheckItemStatus(
-                    check_item_id=check_item.id,
-                    check_item_name=check_item.name,
-                    status=rci.status,
-                )
-            )
+        for row in check_items_rows
+    ]
 
-    # Get finding counts
-    findings = (
-        db.query(ReviewFinding).filter(ReviewFinding.review_id == review_id).all()
+    # Finding件数を集計クエリで取得（全件ロード不要）
+    counts = (
+        db.query(
+            sa_func.count(ReviewFinding.id).label("total"),
+            sa_func.sum(case((ReviewFinding.severity == "HIGH", 1), else_=0)).label(
+                "high"
+            ),
+            sa_func.sum(case((ReviewFinding.severity == "MEDIUM", 1), else_=0)).label(
+                "medium"
+            ),
+            sa_func.sum(case((ReviewFinding.severity == "LOW", 1), else_=0)).label(
+                "low"
+            ),
+        )
+        .filter(ReviewFinding.review_id == review_id)
+        .first()
     )
-    high_count = sum(1 for f in findings if f.severity == "HIGH")
-    medium_count = sum(1 for f in findings if f.severity == "MEDIUM")
-    low_count = sum(1 for f in findings if f.severity == "LOW")
 
     return ReviewDetailResponse(
         id=review.id,
@@ -190,12 +230,12 @@ async def get_review(review_id: int, db: Session = Depends(get_db)):
         status=review.status,
         created_at=review.created_at,
         completed_at=review.completed_at,
-        document_title=document.title if document else None,
+        document_title=review.document.title if review.document else None,
         check_items=check_items_status,
-        finding_count=len(findings),
-        high_count=high_count,
-        medium_count=medium_count,
-        low_count=low_count,
+        finding_count=counts.total if counts else 0,
+        high_count=int(counts.high or 0) if counts else 0,
+        medium_count=int(counts.medium or 0) if counts else 0,
+        low_count=int(counts.low or 0) if counts else 0,
     )
 
 
