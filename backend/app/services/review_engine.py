@@ -417,13 +417,28 @@ class ReviewEngine:
             return db.query(Term).limit(top_k).all()
 
     def _get_writing_rules(self, db: Session, category: str) -> list[WritingRule]:
-        """Get writing rules for a category."""
-        return (
+        """Get writing rules, prioritizing those matching the check item category."""
+        matching = (
             db.query(WritingRule)
-            .filter(WritingRule.is_active.is_(True))
-            .limit(20)
+            .filter(
+                WritingRule.is_active.is_(True),
+                WritingRule.rule_type == category,
+            )
             .all()
         )
+        remaining_limit = 20 - len(matching)
+        if remaining_limit > 0:
+            others = (
+                db.query(WritingRule)
+                .filter(
+                    WritingRule.is_active.is_(True),
+                    WritingRule.rule_type != category,
+                )
+                .limit(remaining_limit)
+                .all()
+            )
+            return matching + others
+        return matching[:20]
 
     def _parse_findings(
         self,

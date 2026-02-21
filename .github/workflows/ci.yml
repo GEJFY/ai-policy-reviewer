@@ -32,7 +32,7 @@ jobs:
 
       - name: Install linters
         run: |
-          pip install ruff black mypy
+          pip install ruff black mypy sqlalchemy
 
       - name: Run Ruff
         run: ruff check app/ tests/
@@ -41,7 +41,7 @@ jobs:
         run: black --check app/ tests/
 
       - name: Type check with MyPy
-        run: mypy app/ --ignore-missing-imports || true
+        run: mypy app/ --config-file mypy.ini
 
   # =============================================================================
   # Security Scan

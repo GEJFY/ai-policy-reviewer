@@ -8,6 +8,7 @@ Authentication API endpoints.
 import logging
 
 from fastapi import APIRouter, HTTPException, status, Depends
+from passlib.context import CryptContext
 from pydantic import BaseModel, Field
 
 from app.auth.jwt_handler import jwt_handler
@@ -75,14 +76,25 @@ class MessageResponse(BaseModel):
 # =============================================================================
 
 
+# CryptContextはインスタンス生成コストが高いためモジュールレベルで1回だけ生成
+_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def _verify_password(plain_password: str, hashed_password: str) -> bool:
+    """パスワードを検証"""
+    return _pwd_context.verify(plain_password, hashed_password)
+
+
+def _hash_password(password: str) -> str:
+    """パスワードをハッシュ化"""
+    return _pwd_context.hash(password)
+
+
 # デモ/開発用のインメモリユーザーストア
 # 初回起動時にパスワードハッシュを生成
 def _init_users() -> dict[str, dict]:
     """デモユーザーを初期化"""
-    from passlib.context import CryptContext
-
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    default_hash = pwd_context.hash("admin123")
+    default_hash = _pwd_context.hash("admin123")
     return {
         "admin": {
             "user_id": "usr_admin_001",
@@ -104,22 +116,6 @@ def _init_users() -> dict[str, dict]:
 _users: dict[str, dict] = _init_users()
 
 _next_user_id = 100
-
-
-def _verify_password(plain_password: str, hashed_password: str) -> bool:
-    """パスワードを検証"""
-    from passlib.context import CryptContext
-
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def _hash_password(password: str) -> str:
-    """パスワードをハッシュ化"""
-    from passlib.context import CryptContext
-
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    return pwd_context.hash(password)
 
 
 # =============================================================================
