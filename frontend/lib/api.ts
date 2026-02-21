@@ -420,6 +420,31 @@ export const reviewsAPI = {
     }>(`/api/v1/reviews/${id}/status`),
   delete: (id: number) =>
     fetchAPI<void>(`/api/v1/reviews/${id}`, { method: 'DELETE' }),
+  exportExcel: async (id: number) => {
+    const response = await fetch(`${API_BASE}/api/v1/reviews/${id}/export`)
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.detail || 'Export failed')
+    }
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    // Content-Dispositionからファイル名を取得
+    const disposition = response.headers.get('content-disposition')
+    let filename = `review_${id}.xlsx`
+    if (disposition) {
+      const match = disposition.match(/filename\*=UTF-8''(.+)/)
+      if (match) {
+        filename = decodeURIComponent(match[1])
+      }
+    }
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  },
 }
 
 // Findings

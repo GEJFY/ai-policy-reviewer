@@ -17,6 +17,7 @@ import {
   X,
   Pause,
   RefreshCw,
+  Download,
 } from 'lucide-react'
 import { reviewsAPI, findingsAPI, Review, Finding } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
@@ -35,6 +36,7 @@ export default function ReviewDetailPage() {
   const [selectedFindings, setSelectedFindings] = useState<number[]>([])
   const [severityFilter, setSeverityFilter] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string>('')
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     loadReview()
@@ -124,6 +126,18 @@ export default function ReviewDetailPage() {
     } catch (error) {
       console.error('Failed to bulk approve:', error)
       setActionError('一括承認に失敗しました')
+    }
+  }
+
+  async function handleExport() {
+    setExporting(true)
+    try {
+      await reviewsAPI.exportExcel(reviewId)
+    } catch (error) {
+      console.error('Failed to export:', error)
+      setActionError('Excelエクスポートに失敗しました')
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -230,14 +244,31 @@ export default function ReviewDetailPage() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <span>{review.document_title || `文書 #${review.document_id}`}</span>
-              {(review.status === 'pending' || review.status === 'processing') && (
-                <div className="flex items-center gap-2 text-yellow-600">
-                  <RefreshCw className="h-5 w-5 animate-spin" aria-hidden="true" />
-                  <span className="text-sm" role="status" aria-live="polite">
-                    {review.status === 'pending' ? 'レビュー準備中...' : 'AIがレビュー中...'}
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                {(review.status === 'pending' || review.status === 'processing') && (
+                  <div className="flex items-center gap-2 text-yellow-600">
+                    <RefreshCw className="h-5 w-5 animate-spin" aria-hidden="true" />
+                    <span className="text-sm" role="status" aria-live="polite">
+                      {review.status === 'pending' ? 'レビュー準備中...' : 'AIがレビュー中...'}
+                    </span>
+                  </div>
+                )}
+                {review.status === 'completed' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleExport}
+                    disabled={exporting}
+                  >
+                    {exporting ? (
+                      <RefreshCw className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Download className="mr-1 h-4 w-4" aria-hidden="true" />
+                    )}
+                    Excel出力
+                  </Button>
+                )}
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent>
