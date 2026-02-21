@@ -376,8 +376,21 @@ async def process_document_ocr(document_id: int):
                 f"OCR processing failed: document_id={document_id}, error={e}",
                 exc_info=True,
             )
-            document.ocr_status = "failed"
-            db.commit()
+            try:
+                db.rollback()
+                document = (
+                    db.query(Document)
+                    .filter(Document.id == document_id)
+                    .first()
+                )
+                if document:
+                    document.ocr_status = "failed"
+                    db.commit()
+            except Exception as rollback_err:
+                logger.error(
+                    f"Failed to update status to failed: document_id={document_id}, "
+                    f"error={rollback_err}"
+                )
 
     finally:
         db.close()
