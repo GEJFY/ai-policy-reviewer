@@ -139,9 +139,7 @@ class TestListFindings:
     def test_list_findings_filter_by_severity(self, client: TestClient, sample_review):
         """severityフィルタが正しく機能"""
         review_id = sample_review["review"].id
-        response = client.get(
-            f"/api/v1/reviews/{review_id}/findings?severity=HIGH"
-        )
+        response = client.get(f"/api/v1/reviews/{review_id}/findings?severity=HIGH")
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 1
@@ -150,9 +148,7 @@ class TestListFindings:
     def test_list_findings_filter_by_status(self, client: TestClient, sample_review):
         """statusフィルタが正しく機能"""
         review_id = sample_review["review"].id
-        response = client.get(
-            f"/api/v1/reviews/{review_id}/findings?status=PENDING"
-        )
+        response = client.get(f"/api/v1/reviews/{review_id}/findings?status=PENDING")
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 3
@@ -391,9 +387,7 @@ class TestFindingsSummary:
     def test_summary_all_pending(self, client: TestClient, sample_review):
         """全件PENDING状態のサマリー"""
         review_id = sample_review["review"].id
-        response = client.get(
-            f"/api/v1/reviews/{review_id}/findings/summary"
-        )
+        response = client.get(f"/api/v1/reviews/{review_id}/findings/summary")
         assert response.status_code == 200
         data = response.json()
         assert data["total_findings"] == 3
@@ -414,9 +408,7 @@ class TestFindingsSummary:
         client.put(f"/api/v1/findings/{findings[0].id}/approve", json={})
         client.put(f"/api/v1/findings/{findings[1].id}/reject", json={})
 
-        response = client.get(
-            f"/api/v1/reviews/{review_id}/findings/summary"
-        )
+        response = client.get(f"/api/v1/reviews/{review_id}/findings/summary")
         assert response.status_code == 200
         data = response.json()
         assert data["total_findings"] == 3
@@ -472,13 +464,9 @@ class TestFindingWorkflow:
         )
 
         # PENDING のみ取得 → 1件
-        response = client.get(
-            f"/api/v1/reviews/{review_id}/findings?status=PENDING"
-        )
+        response = client.get(f"/api/v1/reviews/{review_id}/findings?status=PENDING")
         assert len(response.json()) == 1
 
         # APPROVED のみ取得 → 2件
-        response = client.get(
-            f"/api/v1/reviews/{review_id}/findings?status=APPROVED"
-        )
+        response = client.get(f"/api/v1/reviews/{review_id}/findings?status=APPROVED")
         assert len(response.json()) == 2
