@@ -114,6 +114,7 @@ export interface Document {
   file_type: string | null
   extracted_text: string | null
   ocr_status: string
+  ocr_progress: string | null
   created_at: string
   updated_at: string
 }

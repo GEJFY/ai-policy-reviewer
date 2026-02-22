@@ -240,6 +240,22 @@ async def get_document_text(document_id: int, db: Session = Depends(get_db)):
     return {"text": document.extracted_text}
 
 
+def _update_ocr_progress(document_id: int, progress: str):
+    """OCR進捗を短いトランザクションで更新する。"""
+    from app.db.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        doc = db.query(Document).filter(Document.id == document_id).first()
+        if doc:
+            doc.ocr_progress = progress
+            db.commit()
+    except Exception:
+        pass
+    finally:
+        db.close()
+
+
 async def process_document_ocr(document_id: int):
     """
     バックグラウンドでPDFのOCR処理を実行する。
@@ -265,6 +281,7 @@ async def process_document_ocr(document_id: int):
             return
         file_path = document.file_path
         document.ocr_status = "processing"
+        document.ocr_progress = "テキスト抽出中..."
         db.commit()
     finally:
         db.close()
@@ -295,6 +312,7 @@ async def process_document_ocr(document_id: int):
                 f"Using {ocr_service.provider_name()} for OCR: "
                 f"document_id={document_id}"
             )
+            _update_ocr_progress(document_id, "OCRテキスト抽出中...")
             extracted_text = await ocr_service.extract_text_from_pdf(file_path)
         else:
             logger.warning(
@@ -307,6 +325,7 @@ async def process_document_ocr(document_id: int):
         )
 
         # Hierarchical chunking (section-aware)
+        _update_ocr_progress(document_id, "チャンク分割中...")
         chunk_results = chunking_service.chunk_text_hierarchical(extracted_text)
         logger.info(
             f"Text chunked: document_id={document_id}, "
@@ -315,8 +334,14 @@ async def process_document_ocr(document_id: int):
         )
 
         # Generate embeddings (slow API calls - NO DB lock held)
+        total_chunks = len(chunk_results)
         chunk_data = []
         for i, chunk_result in enumerate(chunk_results):
+            if embedding_service.is_available() and total_chunks > 0:
+                _update_ocr_progress(
+                    document_id,
+                    f"埋め込み生成中 ({i + 1}/{total_chunks})...",
+                )
             embedding_bytes = None
             if embedding_service.is_available():
                 try:
@@ -338,6 +363,7 @@ async def process_document_ocr(document_id: int):
             )
 
         # === Phase 3: 結果をDBに一括保存（短いトランザクション） ===
+        _update_ocr_progress(document_id, "データベース保存中...")
         db = SessionLocal()
         try:
             document = db.query(Document).filter(Document.id == document_id).first()
@@ -366,6 +392,7 @@ async def process_document_ocr(document_id: int):
                 db.add(chunk)
 
             document.ocr_status = "completed"
+            document.ocr_progress = ""
             db.commit()
             logger.info(f"OCR processing completed: document_id={document_id}")
         finally:
@@ -381,6 +408,7 @@ async def process_document_ocr(document_id: int):
             document = db.query(Document).filter(Document.id == document_id).first()
             if document:
                 document.ocr_status = "failed"
+                document.ocr_progress = "エラーが発生しました"
                 db.commit()
         except Exception as rollback_err:
             logger.error(

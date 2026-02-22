@@ -17,6 +17,8 @@ import {
   Database,
 } from 'lucide-react'
 import { settingsAPI, SystemSettings, HealthDetailed } from '@/lib/api'
+import { HelpTooltip } from '@/components/ui/tooltip'
+import { TIPS } from '@/lib/tooltip-texts'
 
 // プロバイダー表示名
 const PROVIDER_LABELS: Record<string, string> = {
@@ -271,7 +273,7 @@ function LLMProviderCard({
     <Card>
       <CardHeader className="flex flex-row items-center gap-2 pb-3">
         <Brain className="h-5 w-5 text-gray-500" />
-        <CardTitle className="text-base">LLMプロバイダー</CardTitle>
+        <CardTitle className="text-base">LLMプロバイダー <HelpTooltip text={TIPS.settings.llmProvider} /></CardTitle>
         <Badge variant="outline" className="ml-auto">
           {providerLabel(settings.llm.provider)}
         </Badge>
@@ -366,7 +368,7 @@ function EmbeddingCard({ settings }: { settings: SystemSettings | null }) {
     <Card>
       <CardHeader className="flex flex-row items-center gap-2 pb-3">
         <Database className="h-5 w-5 text-gray-500" />
-        <CardTitle className="text-base">Embedding</CardTitle>
+        <CardTitle className="text-base">Embedding <HelpTooltip text={TIPS.settings.embeddingProvider} /></CardTitle>
       </CardHeader>
       <CardContent>
         <dl className="space-y-3 text-sm">
@@ -387,7 +389,7 @@ function OCRCard({ settings }: { settings: SystemSettings | null }) {
     <Card>
       <CardHeader className="flex flex-row items-center gap-2 pb-3">
         <Eye className="h-5 w-5 text-gray-500" />
-        <CardTitle className="text-base">OCR</CardTitle>
+        <CardTitle className="text-base">OCR <HelpTooltip text={TIPS.settings.ocrProvider} /></CardTitle>
       </CardHeader>
       <CardContent>
         <dl className="space-y-3 text-sm">

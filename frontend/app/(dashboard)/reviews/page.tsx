@@ -9,6 +9,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Eye, Trash2, CheckCircle, Clock, AlertCircle, XCircle } from 'lucide-react'
 import { reviewsAPI, Review } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
+import { HelpTooltip } from '@/components/ui/tooltip'
+import { TIPS } from '@/lib/tooltip-texts'
 
 export default function ReviewsPage() {
   const [reviews, setReviews] = useState<Review[]>([])
@@ -108,10 +110,10 @@ export default function ReviewsPage() {
                       文書
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                      ステータス
+                      ステータス <HelpTooltip text={TIPS.reviews.status} />
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                      指摘数
+                      指摘数 <HelpTooltip text={TIPS.reviews.severity} />
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       実行日時

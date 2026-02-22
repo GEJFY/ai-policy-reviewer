@@ -1,17 +1,19 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Header } from '@/components/layout/header'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Upload, FileText, Trash2, Play, Eye, RefreshCw } from 'lucide-react'
+import { HelpTooltip } from '@/components/ui/tooltip'
+import { Upload, FileText, Trash2, Play, Eye, RefreshCw, Loader2 } from 'lucide-react'
 import { documentsAPI, Document, CheckItem, checkItemsAPI, reviewsAPI, fetchAPI } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
 import { useConfirm } from '@/components/ui/confirm-dialog'
+import { TIPS } from '@/lib/tooltip-texts'
 
 export default function DocumentsPage() {
   const [documents, setDocuments] = useState<Document[]>([])
@@ -24,13 +26,8 @@ export default function DocumentsPage() {
   const { showToast } = useToast()
   const { confirm } = useConfirm()
 
-  useEffect(() => {
-    loadDocuments()
-  }, [])
-
-  async function loadDocuments() {
+  const loadDocuments = useCallback(async () => {
     try {
-      setLoading(true)
       const data = await documentsAPI.list()
       setDocuments(data)
     } catch (error) {
@@ -38,13 +35,31 @@ export default function DocumentsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    setLoading(true)
+    loadDocuments()
+  }, [loadDocuments])
+
+  // Polling: 処理中のドキュメントがあれば3秒ごとにリフレッシュ
+  useEffect(() => {
+    const hasProcessing = documents.some(
+      (d) => d.ocr_status === 'processing' || d.ocr_status === 'pending'
+    )
+    if (!hasProcessing) return
+
+    const interval = setInterval(() => {
+      loadDocuments()
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [documents, loadDocuments])
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files
     if (!files || files.length === 0) return
 
-    // バリデーション
     const MAX_SIZE_MB = 50
     const validFiles: File[] = []
     for (const file of Array.from(files)) {
@@ -105,16 +120,31 @@ export default function DocumentsPage() {
     }
   }
 
-  function getStatusBadge(status: string) {
-    switch (status) {
+  function getStatusBadge(doc: Document) {
+    switch (doc.ocr_status) {
       case 'completed':
         return <Badge variant="success">OCR完了</Badge>
       case 'processing':
-        return <Badge variant="warning">処理中</Badge>
+        return (
+          <div className="flex items-center gap-2">
+            <Badge variant="warning" className="flex items-center gap-1">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              処理中
+            </Badge>
+            {doc.ocr_progress && (
+              <span className="text-xs text-gray-500">{doc.ocr_progress}</span>
+            )}
+          </div>
+        )
       case 'failed':
         return <Badge variant="destructive">失敗</Badge>
       default:
-        return <Badge variant="secondary">待機中</Badge>
+        return (
+          <Badge variant="secondary" className="flex items-center gap-1">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            待機中
+          </Badge>
+        )
     }
   }
 
@@ -127,7 +157,10 @@ export default function DocumentsPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold">文書をアップロード</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-semibold">文書をアップロード</h3>
+                  <HelpTooltip text={TIPS.documents.upload} />
+                </div>
                 <p className="text-sm text-gray-500">
                   PDF形式のファイルをアップロードしてください（複数選択可）
                 </p>
@@ -177,7 +210,10 @@ export default function DocumentsPage() {
                       タイトル
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                      OCR状態
+                      <span className="flex items-center gap-1">
+                        OCR状態
+                        <HelpTooltip text={TIPS.documents.ocrStatus} />
+                      </span>
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       登録日時
@@ -196,7 +232,7 @@ export default function DocumentsPage() {
                           <span className="font-medium">{doc.title}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3">{getStatusBadge(doc.ocr_status)}</td>
+                      <td className="px-4 py-3">{getStatusBadge(doc)}</td>
                       <td className="px-4 py-3 text-sm text-gray-500">
                         {formatDate(doc.created_at)}
                       </td>
@@ -342,8 +378,9 @@ function ReviewStartModal({
 
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-medium text-gray-700">
+            <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
               チェック項目を選択
+              <HelpTooltip text="レビュー時にAIがチェックする観点を選択します。すべて選択すると網羅的にチェックできます。" />
             </label>
             <button
               type="button"
