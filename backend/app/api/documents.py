@@ -41,7 +41,11 @@ from typing import Optional
 from app.db.database import get_db
 from app.models.document import Document, DocumentChunk
 from app.models.review import Review, ReviewFinding, ReviewCheckItem
-from app.models.comparison import ComparisonProject, ComparisonCheckItem, ComparisonResult
+from app.models.comparison import (
+    ComparisonProject,
+    ComparisonCheckItem,
+    ComparisonResult,
+)
 from app.models.document_group import DocumentGroupMember
 from app.schemas.document import (
     DocumentResponse,
@@ -223,9 +227,7 @@ async def delete_document(document_id: int, db: Session = Depends(get_db)):
     # 1. Reviews and their findings/check_items (cascade from Review)
     reviews = db.query(Review).filter(Review.document_id == document_id).all()
     for review in reviews:
-        db.query(ReviewFinding).filter(
-            ReviewFinding.review_id == review.id
-        ).delete()
+        db.query(ReviewFinding).filter(ReviewFinding.review_id == review.id).delete()
         db.query(ReviewCheckItem).filter(
             ReviewCheckItem.review_id == review.id
         ).delete()
@@ -233,10 +235,14 @@ async def delete_document(document_id: int, db: Session = Depends(get_db)):
 
     # 2. Comparison projects referencing this document
     # Delete results and check_items for each project first
-    projects = db.query(ComparisonProject).filter(
-        (ComparisonProject.parent_document_id == document_id)
-        | (ComparisonProject.subsidiary_document_id == document_id)
-    ).all()
+    projects = (
+        db.query(ComparisonProject)
+        .filter(
+            (ComparisonProject.parent_document_id == document_id)
+            | (ComparisonProject.subsidiary_document_id == document_id)
+        )
+        .all()
+    )
     for project in projects:
         db.query(ComparisonResult).filter(
             ComparisonResult.project_id == project.id
