@@ -584,7 +584,7 @@ async def bulk_export_reviews(
     from app.api.export import _build_workbook, _encode_filename
     import io
     from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.styles import Alignment
 
     review_ids = request.get("review_ids", [])
     if not review_ids:
