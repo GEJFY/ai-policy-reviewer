@@ -76,10 +76,11 @@ def _get_document_content(db: Session, doc: Document, max_chars: int = 8000) -> 
         .order_by(DocumentChunk.chunk_index)
         .all()
     )
+    content: str
     if chunks:
         content = "\n\n".join(str(c.content) for c in chunks)
     else:
-        content: str = str(doc.extracted_text or "")
+        content = str(doc.extracted_text or "")
     return content[:max_chars]
 
 
