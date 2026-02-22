@@ -65,6 +65,11 @@ export const TIPS = {
     exampleGood: '正しい例です。改善提案として表示されます。',
   },
 
+  // === Document Groups ===
+  documentGroups: {
+    description: '関連する規程文書をグループ化し、文書間の矛盾や不整合をAIが検出します。例: 就業規則と給与規程、情報セキュリティポリシーと個人情報保護規程など。',
+  },
+
   // === Settings ===
   settings: {
     llmProvider: 'AIレビューに使用するLLMプロバイダーを選択します。Azure/AWS/GCP/ローカル(Ollama)から選択可能です。',
