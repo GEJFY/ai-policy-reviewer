@@ -629,7 +629,7 @@ async def bulk_export_reviews(
 
     # Multiple reviews: build a workbook with one sheet per review
     wb = Workbook()
-    wb.remove(wb.active)  # type: ignore[arg-type]
+    wb.remove(wb.active)
 
     for review in reviews:
         findings = (
@@ -689,14 +689,14 @@ async def bulk_export_reviews(
                 finding.description,
                 finding.suggestion or "",
                 finding.rationale or "",
-                _STATUS_LABELS.get(finding.status, finding.status),
+                _STATUS_LABELS.get(str(finding.status), str(finding.status)),
                 finding.comment or "",
             ]
             for col_idx, value in enumerate(values, 1):
                 cell = ws.cell(row=row, column=col_idx, value=value)
                 cell.border = _THIN_BORDER
                 cell.alignment = wrap_alignment
-            severity_fill = _SEVERITY_FILLS.get(finding.severity)
+            severity_fill = _SEVERITY_FILLS.get(str(finding.severity))
             if severity_fill:
                 ws.cell(row=row, column=2).fill = severity_fill
 
