@@ -6,7 +6,7 @@ import { Header } from '@/components/layout/header'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Eye, Trash2, CheckCircle, Clock, AlertCircle, XCircle } from 'lucide-react'
+import { Eye, Trash2, CheckCircle, Clock, XCircle, Download } from 'lucide-react'
 import { reviewsAPI, Review } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import { HelpTooltip } from '@/components/ui/tooltip'
@@ -16,6 +16,8 @@ export default function ReviewsPage() {
   const [reviews, setReviews] = useState<Review[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string>('')
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     loadReviews()
@@ -28,6 +30,7 @@ export default function ReviewsPage() {
         statusFilter ? { status: statusFilter } : undefined
       )
       setReviews(data)
+      setSelectedIds(new Set())
     } catch (error) {
       console.error('Failed to load reviews:', error)
     } finally {
@@ -42,6 +45,46 @@ export default function ReviewsPage() {
       loadReviews()
     } catch (error) {
       console.error('Failed to delete review:', error)
+    }
+  }
+
+  function toggleSelect(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === reviews.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(reviews.map((r) => r.id)))
+    }
+  }
+
+  async function handleBulkExport() {
+    if (selectedIds.size === 0) return
+    try {
+      setExporting(true)
+      await reviewsAPI.bulkExport(Array.from(selectedIds))
+    } catch (error) {
+      console.error('Failed to export reviews:', error)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  async function handleSingleExport(id: number) {
+    try {
+      await reviewsAPI.exportExcel(id)
+    } catch (error) {
+      console.error('Failed to export review:', error)
     }
   }
 
@@ -75,22 +118,40 @@ export default function ReviewsPage() {
     <>
       <Header title="レビュー一覧" />
       <div className="p-6">
-        {/* Filter */}
-        <div className="mb-6 flex items-center gap-4">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-md border border-gray-200 px-3 py-2 text-sm"
-          >
-            <option value="">すべてのステータス</option>
-            <option value="pending">待機中</option>
-            <option value="processing">処理中</option>
-            <option value="completed">完了</option>
-            <option value="failed">失敗</option>
-          </select>
-          <Button variant="outline" onClick={loadReviews}>
-            更新
-          </Button>
+        {/* Filter & Actions */}
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="rounded-md border border-gray-200 px-3 py-2 text-sm"
+            >
+              <option value="">すべてのステータス</option>
+              <option value="pending">待機中</option>
+              <option value="processing">処理中</option>
+              <option value="completed">完了</option>
+              <option value="failed">失敗</option>
+            </select>
+            <Button variant="outline" onClick={loadReviews}>
+              更新
+            </Button>
+          </div>
+
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">
+                {selectedIds.size}件選択中
+              </span>
+              <Button
+                onClick={handleBulkExport}
+                disabled={exporting}
+                size="sm"
+              >
+                <Download className="mr-1 h-4 w-4" aria-hidden="true" />
+                {exporting ? 'エクスポート中...' : '一括ダウンロード'}
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Reviews Table */}
@@ -106,6 +167,15 @@ export default function ReviewsPage() {
               <table className="w-full" aria-label="レビュー一覧">
                 <thead className="border-b bg-gray-50">
                   <tr>
+                    <th scope="col" className="px-3 py-3 text-left">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.size === reviews.length && reviews.length > 0}
+                        onChange={toggleSelectAll}
+                        className="rounded border-gray-300"
+                        aria-label="すべて選択"
+                      />
+                    </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       文書
                     </th>
@@ -125,7 +195,19 @@ export default function ReviewsPage() {
                 </thead>
                 <tbody className="divide-y">
                   {reviews.map((review) => (
-                    <tr key={review.id} className="hover:bg-gray-50">
+                    <tr
+                      key={review.id}
+                      className={`hover:bg-gray-50 ${selectedIds.has(review.id) ? 'bg-blue-50' : ''}`}
+                    >
+                      <td className="px-3 py-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(review.id)}
+                          onChange={() => toggleSelect(review.id)}
+                          className="rounded border-gray-300"
+                          aria-label={`${review.document_title || `文書 #${review.document_id}`}を選択`}
+                        />
+                      </td>
                       <td className="px-4 py-3">
                         <span className="font-medium">
                           {review.document_title || `文書 #${review.document_id}`}
@@ -172,6 +254,14 @@ export default function ReviewsPage() {
                               詳細
                             </Button>
                           </Link>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSingleExport(review.id)}
+                            aria-label={`${review.document_title || `文書 #${review.document_id}`}をダウンロード`}
+                          >
+                            <Download className="h-4 w-4" aria-hidden="true" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="sm"
