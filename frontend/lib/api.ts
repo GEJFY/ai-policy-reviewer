@@ -143,6 +143,7 @@ export interface Finding {
   description: string
   suggestion: string | null
   rationale: string | null
+  confidence: number | null
   status: string
   reviewed_by: string | null
   reviewed_at: string | null
