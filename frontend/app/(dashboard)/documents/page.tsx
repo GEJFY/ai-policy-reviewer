@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { HelpTooltip } from '@/components/ui/tooltip'
-import { Upload, FileText, Trash2, Play, Eye, RefreshCw, Loader2 } from 'lucide-react'
+import { Upload, FileText, Trash2, Play, Eye, RefreshCw, Loader2, CheckSquare } from 'lucide-react'
 import { documentsAPI, Document, CheckItem, checkItemsAPI, reviewsAPI, fetchAPI } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import { useToast } from '@/components/ui/toast'
@@ -22,6 +22,8 @@ export default function DocumentsPage() {
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 })
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null)
+  const [selectedDocIds, setSelectedDocIds] = useState<number[]>([])
+  const [showBatchReviewModal, setShowBatchReviewModal] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { showToast } = useToast()
   const { confirm } = useConfirm()
@@ -148,6 +150,22 @@ export default function DocumentsPage() {
     }
   }
 
+  const completedDocs = documents.filter((d) => d.ocr_status === 'completed')
+
+  function toggleDocSelection(id: number) {
+    setSelectedDocIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    )
+  }
+
+  function toggleAllCompleted() {
+    if (selectedDocIds.length === completedDocs.length) {
+      setSelectedDocIds([])
+    } else {
+      setSelectedDocIds(completedDocs.map((d) => d.id))
+    }
+  }
+
   return (
     <>
       <Header title="文書管理" />
@@ -193,6 +211,27 @@ export default function DocumentsPage() {
           </CardContent>
         </Card>
 
+        {/* Batch Selection Bar */}
+        {selectedDocIds.length > 0 && (
+          <div className="mb-4 flex items-center gap-4 rounded-lg bg-blue-50 p-4">
+            <span className="text-sm font-medium">{selectedDocIds.length} 件選択中</span>
+            <Button
+              size="sm"
+              onClick={() => setShowBatchReviewModal(true)}
+            >
+              <CheckSquare className="mr-1 h-4 w-4" aria-hidden="true" />
+              一括チェック
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setSelectedDocIds([])}
+            >
+              選択解除
+            </Button>
+          </div>
+        )}
+
         {/* Documents Table */}
         <Card>
           <CardContent className="p-0">
@@ -206,6 +245,17 @@ export default function DocumentsPage() {
               <table className="w-full" aria-label="文書一覧">
                 <thead className="border-b bg-gray-50">
                   <tr>
+                    <th scope="col" className="w-10 px-4 py-3">
+                      {completedDocs.length > 0 && (
+                        <input
+                          type="checkbox"
+                          checked={selectedDocIds.length === completedDocs.length && completedDocs.length > 0}
+                          onChange={toggleAllCompleted}
+                          className="h-4 w-4 rounded border-gray-300"
+                          aria-label="すべてのOCR完了文書を選択"
+                        />
+                      )}
+                    </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       タイトル
                     </th>
@@ -226,6 +276,19 @@ export default function DocumentsPage() {
                 <tbody className="divide-y">
                   {documents.map((doc) => (
                     <tr key={doc.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        {doc.ocr_status === 'completed' ? (
+                          <input
+                            type="checkbox"
+                            checked={selectedDocIds.includes(doc.id)}
+                            onChange={() => toggleDocSelection(doc.id)}
+                            className="h-4 w-4 rounded border-gray-300"
+                            aria-label={`${doc.title}を選択`}
+                          />
+                        ) : (
+                          <span className="inline-block w-4" />
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <FileText className="h-5 w-5 text-gray-400" aria-hidden="true" />
@@ -297,6 +360,21 @@ export default function DocumentsPage() {
             onClose={() => {
               setShowReviewModal(false)
               setSelectedDocument(null)
+            }}
+          />
+        )}
+
+        {/* Batch Review Modal */}
+        {showBatchReviewModal && selectedDocIds.length > 0 && (
+          <BatchReviewModal
+            documentIds={selectedDocIds}
+            documentTitles={documents
+              .filter((d) => selectedDocIds.includes(d.id))
+              .map((d) => d.title)}
+            onClose={() => setShowBatchReviewModal(false)}
+            onStarted={() => {
+              setShowBatchReviewModal(false)
+              setSelectedDocIds([])
             }}
           />
         )}
@@ -439,6 +517,170 @@ function ReviewStartModal({
               </>
             ) : (
               'レビューを開始'
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BatchReviewModal({
+  documentIds,
+  documentTitles,
+  onClose,
+  onStarted,
+}: {
+  documentIds: number[]
+  documentTitles: string[]
+  onClose: () => void
+  onStarted: () => void
+}) {
+  const router = useRouter()
+  const { showToast } = useToast()
+  const [checkItems, setCheckItems] = useState<CheckItem[]>([])
+  const [selectedItems, setSelectedItems] = useState<number[]>([])
+  const [loading, setLoading] = useState(true)
+  const [starting, setStarting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    loadCheckItems()
+  }, [])
+
+  async function loadCheckItems() {
+    try {
+      const items = await checkItemsAPI.list({ is_active: true })
+      setCheckItems(items)
+      setSelectedItems(items.map((i) => i.id))
+    } catch (error) {
+      console.error('Failed to load check items:', error)
+      setError('チェック項目の読み込みに失敗しました')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleStartBatchReview() {
+    if (selectedItems.length === 0) {
+      setError('チェック項目を選択してください')
+      return
+    }
+
+    setStarting(true)
+    setError(null)
+    try {
+      const result = await reviewsAPI.createBatch(documentIds, selectedItems)
+      const successCount = result.created_reviews.length
+      const failCount = result.failed_document_ids.length
+      if (successCount > 0) {
+        showToast(`${successCount}件のレビューを開始しました`, 'success')
+      }
+      if (failCount > 0) {
+        showToast(`${failCount}件の文書でレビュー開始に失敗しました`, 'error')
+      }
+      onStarted()
+      if (successCount === 1) {
+        router.push(`/reviews/${result.created_reviews[0].id}`)
+      } else {
+        router.push('/reviews')
+      }
+    } catch (error) {
+      console.error('Failed to start batch review:', error)
+      setError('一括レビューの開始に失敗しました')
+      setStarting(false)
+    }
+  }
+
+  function toggleItem(id: number) {
+    setSelectedItems((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    )
+  }
+
+  function toggleAll() {
+    if (selectedItems.length === checkItems.length) {
+      setSelectedItems([])
+    } else {
+      setSelectedItems(checkItems.map((i) => i.id))
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl max-h-[80vh] overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="batch-review-title">
+        <h3 id="batch-review-title" className="mb-4 text-lg font-semibold">
+          一括レビューを開始
+        </h3>
+
+        <div className="mb-4">
+          <p className="text-sm text-gray-500 mb-2">対象文書（{documentIds.length}件）:</p>
+          <div className="max-h-24 overflow-y-auto rounded-md border bg-gray-50 p-2">
+            {documentTitles.map((title, idx) => (
+              <p key={idx} className="text-sm truncate">{title}</p>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm font-medium text-gray-700">
+              チェック項目を選択
+            </label>
+            <button
+              type="button"
+              onClick={toggleAll}
+              className="text-sm text-blue-600 hover:underline"
+            >
+              {selectedItems.length === checkItems.length ? 'すべて解除' : 'すべて選択'}
+            </button>
+          </div>
+          {loading ? (
+            <div className="py-4 text-center text-gray-500">読み込み中...</div>
+          ) : (
+            <div className="max-h-48 overflow-y-auto border rounded-md">
+              {checkItems.map((item) => (
+                <label
+                  key={item.id}
+                  className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedItems.includes(item.id)}
+                    onChange={() => toggleItem(item.id)}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <div>
+                    <p className="font-medium">{item.name}</p>
+                    <p className="text-xs text-gray-500">{item.description}</p>
+                  </div>
+                  <Badge variant="secondary" className="ml-auto">
+                    {item.severity}
+                  </Badge>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {error && (
+          <div role="alert" className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose} disabled={starting}>
+            キャンセル
+          </Button>
+          <Button onClick={handleStartBatchReview} disabled={starting || loading}>
+            {starting ? (
+              <>
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                レビュー開始中...
+              </>
+            ) : (
+              `${documentIds.length}件の一括レビューを開始`
             )}
           </Button>
         </div>

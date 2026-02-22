@@ -25,6 +25,7 @@ import {
   Eye,
   FileText,
   Pencil,
+  FileDown,
 } from 'lucide-react'
 import { reviewsAPI, findingsAPI, Review, Finding } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
@@ -48,6 +49,7 @@ export default function ReviewDetailPage() {
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
   const [exporting, setExporting] = useState(false)
+  const [downloading, setDownloading] = useState(false)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     HIGH: true,
     MEDIUM: false,
@@ -130,6 +132,18 @@ export default function ReviewDetailPage() {
     } catch (error) {
       console.error('Failed to bulk approve:', error)
       setActionError('一括承認に失敗しました')
+    }
+  }
+
+  async function handleDownloadRevised() {
+    setDownloading(true)
+    try {
+      await reviewsAPI.downloadRevised(reviewId)
+    } catch (error) {
+      console.error('Failed to download revised document:', error)
+      setActionError('改訂版ダウンロードに失敗しました')
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -298,6 +312,19 @@ export default function ReviewDetailPage() {
                         修正文書プレビュー
                       </Button>
                     )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleDownloadRevised}
+                      disabled={downloading}
+                    >
+                      {downloading ? (
+                        <RefreshCw className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <FileDown className="mr-1 h-4 w-4" aria-hidden="true" />
+                      )}
+                      改訂版DL
+                    </Button>
                     <Button
                       size="sm"
                       variant="outline"

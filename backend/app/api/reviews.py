@@ -23,7 +23,10 @@ API endpoints for Review management.
     - VectorStore: 類似用語検索
 """
 
+from urllib.parse import quote
+
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy import case, func as sa_func
 from sqlalchemy.orm import Session, joinedload
 from typing import Optional
@@ -37,8 +40,11 @@ from app.schemas.review import (
     ReviewResponse,
     ReviewDetailResponse,
     ReviewCheckItemStatus,
+    BatchReviewCreate,
+    BatchReviewResponse,
 )
 from app.services.review_engine import review_engine
+from app.services.docx_generator import generate_revised_docx
 from app.core.logging_config import get_logger
 
 # モジュール専用ロガー
@@ -436,6 +442,137 @@ async def delete_review(review_id: int, db: Session = Depends(get_db)):
     db.delete(review)
     db.commit()
     return None
+
+
+@router.post("/batch", response_model=BatchReviewResponse, status_code=201)
+async def create_batch_review(
+    request: BatchReviewCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """Create reviews for multiple documents at once."""
+    # Validate check items
+    for check_item_id in request.check_item_ids:
+        check_item = db.query(CheckItem).filter(CheckItem.id == check_item_id).first()
+        if not check_item:
+            raise HTTPException(
+                status_code=400, detail=f"Check item {check_item_id} not found"
+            )
+
+    if not review_engine.is_available():
+        raise HTTPException(
+            status_code=503,
+            detail="Review engine not available. Check LLM provider configuration.",
+        )
+
+    created_reviews = []
+    failed_document_ids = []
+
+    for doc_id in request.document_ids:
+        document = db.query(Document).filter(Document.id == doc_id).first()
+        if not document:
+            failed_document_ids.append(doc_id)
+            continue
+        if document.ocr_status != "completed":
+            failed_document_ids.append(doc_id)
+            continue
+
+        review = Review(document_id=doc_id, status="pending")
+        db.add(review)
+        db.commit()
+        db.refresh(review)
+
+        for check_item_id in request.check_item_ids:
+            review_check = ReviewCheckItem(
+                review_id=review.id,
+                check_item_id=check_item_id,
+                status="pending",
+            )
+            db.add(review_check)
+        db.commit()
+
+        background_tasks.add_task(
+            execute_review_task, review.id, request.check_item_ids
+        )
+        created_reviews.append(review)
+
+    return BatchReviewResponse(
+        created_reviews=created_reviews,
+        failed_document_ids=failed_document_ids,
+    )
+
+
+@router.get("/{review_id}/revised-document")
+async def download_revised_document(review_id: int, db: Session = Depends(get_db)):
+    """Download revised document as DOCX with approved suggestions applied."""
+    review = db.query(Review).filter(Review.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Review not found")
+
+    document = db.query(Document).filter(Document.id == review.document_id).first()
+    if not document or not document.extracted_text:
+        raise HTTPException(status_code=404, detail="Document text not available")
+
+    # Get approved findings
+    approved_findings = (
+        db.query(ReviewFinding)
+        .filter(
+            ReviewFinding.review_id == review_id,
+            ReviewFinding.status == "APPROVED",
+            ReviewFinding.original_text.isnot(None),
+        )
+        .all()
+    )
+
+    # Apply replacements
+    revised_text = document.extracted_text
+    changes_applied = 0
+    replacements = []
+
+    for f in approved_findings:
+        suggestion = getattr(f, "edited_suggestion", None) or f.suggestion
+        if not suggestion or not f.original_text:
+            continue
+        idx = revised_text.find(f.original_text)
+        if idx >= 0:
+            replacements.append(
+                {
+                    "start": idx,
+                    "end": idx + len(f.original_text),
+                    "replacement": suggestion,
+                }
+            )
+
+    replacements.sort(key=lambda r: r["start"], reverse=True)
+    for r in replacements:
+        revised_text = (
+            revised_text[: r["start"]] + r["replacement"] + revised_text[r["end"] :]
+        )
+        changes_applied += 1
+
+    # Generate DOCX
+    docx_buffer = generate_revised_docx(
+        title=document.title,
+        original_text=document.extracted_text,
+        revised_text=revised_text,
+        changes_applied=changes_applied,
+        total_approved=len(approved_findings),
+    )
+
+    # Build filename
+    base_name = (
+        document.title.rsplit(".", 1)[0] if "." in document.title else document.title
+    )
+    filename = f"{base_name}_改訂版.docx"
+    encoded_filename = quote(filename)
+
+    return StreamingResponse(
+        docx_buffer,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+        },
+    )
 
 
 async def execute_review_task(review_id: int, check_item_ids: list[int]):

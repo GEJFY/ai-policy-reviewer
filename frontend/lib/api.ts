@@ -466,6 +466,40 @@ export const reviewsAPI = {
     a.remove()
     window.URL.revokeObjectURL(url)
   },
+  createBatch: (document_ids: number[], check_item_ids: number[]) =>
+    fetchAPI<{ created_reviews: Review[]; failed_document_ids: number[] }>(
+      '/api/v1/reviews/batch',
+      {
+        method: 'POST',
+        body: JSON.stringify({ document_ids, check_item_ids }),
+      }
+    ),
+  downloadRevised: async (id: number) => {
+    const response = await fetch(
+      `${API_BASE}/api/v1/reviews/${id}/revised-document`
+    )
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.detail || 'Download failed')
+    }
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const disposition = response.headers.get('content-disposition')
+    let filename = `review_${id}_revised.docx`
+    if (disposition) {
+      const match = disposition.match(/filename\*=UTF-8''(.+)/)
+      if (match) {
+        filename = decodeURIComponent(match[1])
+      }
+    }
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  },
 }
 
 // Findings
