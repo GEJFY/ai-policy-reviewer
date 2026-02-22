@@ -24,7 +24,15 @@ data/*.db
 *.db-shm
 *.db-wal
 data/uploads/
+**/data/uploads/
 !data/.gitkeep
+
+# Runtime cache
+.cache/
+.local/
+
+# Sample PDFs
+samples/*.pdf
 
 # Node.js
 node_modules/
