@@ -2,7 +2,7 @@
 
 import os
 from sqlalchemy import inspect, text
-from app.db.database import engine
+from app.db.database import engine, SessionLocal
 from app.models.base import Base
 from app.core.logging_config import get_logger
 
@@ -38,6 +38,25 @@ def _migrate_sqlite_schema():
                 )
 
 
+def _seed_initial_data():
+    """Seed initial check items and writing rules if tables are empty."""
+    from app.models.check_item import CheckItem
+    from app.db.seed_data import seed_check_items, seed_writing_rules
+
+    db = SessionLocal()
+    try:
+        count = db.query(CheckItem).count()
+        if count == 0:
+            added = seed_check_items(db)
+            logger.info(f"Seeded {added} check items")
+            added = seed_writing_rules(db)
+            logger.info(f"Seeded {added} writing rules")
+    except Exception as e:
+        logger.warning(f"Seed data insertion failed: {e}")
+    finally:
+        db.close()
+
+
 def create_tables():
     """Create all database tables."""
     # Ensure data directory exists
@@ -53,3 +72,6 @@ def create_tables():
 
     # Migrate schema for existing tables (add missing columns)
     _migrate_sqlite_schema()
+
+    # Seed initial data if tables are empty
+    _seed_initial_data()

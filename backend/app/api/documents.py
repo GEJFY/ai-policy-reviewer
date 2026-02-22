@@ -244,149 +244,148 @@ async def process_document_ocr(document_id: int):
     """
     バックグラウンドでPDFのOCR処理を実行する。
 
-    Azure Document Intelligenceを使用してテキストを抽出し、
-    チャンク分割とベクトル埋め込み生成を行う。
-    Azureサービスが利用不可の場合はPyPDF2にフォールバック。
-
-    処理フロー:
-        1. 文書ステータスをprocessingに更新
-        2. OCRサービスでテキスト抽出（Azure DIまたはPyPDF2）
-        3. テキストをチャンクに分割（ChunkingService）
-        4. 既存チャンクを削除（再処理対応）
-        5. 各チャンクにベクトル埋め込みを生成
-        6. チャンクをDBに保存
-        7. ステータスをcompletedに更新
+    DB書き込みロックの長時間保持を避けるため、処理を3フェーズに分割:
+        Phase 1: ステータス更新（短いDB書き込み）
+        Phase 2: テキスト抽出・チャンク分割・埋め込み生成（DBロックなし）
+        Phase 3: 結果をDBに一括保存（短いDB書き込み）
 
     Args:
         document_id: 処理対象の文書ID
-
-    エラーハンドリング:
-        - OCR失敗時: ocr_status=failedに更新
-        - 埋め込み生成失敗: 警告ログを出力し、埋め込みなしで続行
-        - 例外発生時: ステータスをfailedに更新し、ログ記録
-
-    生成データ:
-        - Document.extracted_text: 抽出されたフルテキスト
-        - DocumentChunk: チャンク分割されたテキストと埋め込みベクトル
-
-    Note:
-        大規模PDFの場合、処理に数分かかる場合がある。
-        スキャンPDFはAzure Document Intelligenceで高精度OCR。
-        テキストPDFはPyPDF2でも処理可能。
     """
     from app.db.database import SessionLocal
 
     logger.info(f"Starting OCR processing: document_id={document_id}")
 
+    # === Phase 1: ステータスをprocessingに更新（短いトランザクション） ===
     db = SessionLocal()
     try:
         document = db.query(Document).filter(Document.id == document_id).first()
         if not document:
             logger.warning(f"Document not found for OCR: document_id={document_id}")
             return
-
-        # Update status
+        file_path = document.file_path
         document.ocr_status = "processing"
         db.commit()
+    finally:
+        db.close()
 
+    # === Phase 2: テキスト抽出・チャンク・埋め込み生成（DBロックなし） ===
+    try:
+        # Extract text - まずPyPDF2でテキスト抽出を試みる
+        extracted_text = ""
         try:
-            # Extract text - まずPyPDF2でテキスト抽出を試みる
-            extracted_text = ""
-            try:
-                import PyPDF2
+            import PyPDF2
 
-                with open(document.file_path, "rb") as f:
-                    reader = PyPDF2.PdfReader(f)
-                    pages = [page.extract_text() or "" for page in reader.pages]
-                    extracted_text = "\n\n".join(pages).strip()
-            except Exception as e:
-                logger.warning(
-                    f"PyPDF2 text extraction failed: document_id={document_id}, error={e}"
-                )
+            with open(file_path, "rb") as f:
+                reader = PyPDF2.PdfReader(f)
+                pages = [page.extract_text() or "" for page in reader.pages]
+                extracted_text = "\n\n".join(pages).strip()
+        except Exception as e:
+            logger.warning(
+                f"PyPDF2 text extraction failed: document_id={document_id}, error={e}"
+            )
 
-            if len(extracted_text) > 100:
-                # テキストベースPDF: PyPDF2で十分なテキストが取れた
-                logger.info(
-                    f"Using PyPDF2 for text PDF: document_id={document_id}, "
-                    f"chars={len(extracted_text)}"
-                )
-            elif ocr_service.is_available():
-                # スキャンPDF: OCRが必要
-                logger.info(
-                    f"Using {ocr_service.provider_name()} for OCR: document_id={document_id}"
-                )
-                extracted_text = await ocr_service.extract_text_from_pdf(
-                    document.file_path
-                )
-            else:
+        if len(extracted_text) > 100:
+            logger.info(
+                f"Using PyPDF2 for text PDF: document_id={document_id}, "
+                f"chars={len(extracted_text)}"
+            )
+        elif ocr_service.is_available():
+            logger.info(
+                f"Using {ocr_service.provider_name()} for OCR: "
+                f"document_id={document_id}"
+            )
+            extracted_text = await ocr_service.extract_text_from_pdf(file_path)
+        else:
+            logger.warning(
+                f"No OCR available and PyPDF2 extraction insufficient: "
+                f"document_id={document_id}"
+            )
+
+        logger.info(
+            f"Text extracted: document_id={document_id}, length={len(extracted_text)}"
+        )
+
+        # Hierarchical chunking (section-aware)
+        chunk_results = chunking_service.chunk_text_hierarchical(extracted_text)
+        logger.info(
+            f"Text chunked: document_id={document_id}, "
+            f"chunks={len(chunk_results)}, "
+            f"sections={len(set(c.section_title for c in chunk_results if c.section_title))}"
+        )
+
+        # Generate embeddings (slow API calls - NO DB lock held)
+        chunk_data = []
+        for i, chunk_result in enumerate(chunk_results):
+            embedding_bytes = None
+            if embedding_service.is_available():
+                try:
+                    embedding = await embedding_service.get_embedding(
+                        chunk_result.content
+                    )
+                    embedding_bytes = embedding_service.embedding_to_bytes(embedding)
+                except Exception as e:
+                    logger.warning(
+                        f"Failed to generate chunk embedding: chunk={i}, error={e}"
+                    )
+            chunk_data.append(
+                {
+                    "chunk_index": i,
+                    "section_title": chunk_result.section_title,
+                    "content": chunk_result.content,
+                    "embedding": embedding_bytes,
+                }
+            )
+
+        # === Phase 3: 結果をDBに一括保存（短いトランザクション） ===
+        db = SessionLocal()
+        try:
+            document = db.query(Document).filter(Document.id == document_id).first()
+            if not document:
                 logger.warning(
-                    f"No OCR available and PyPDF2 extraction insufficient: "
-                    f"document_id={document_id}"
+                    f"Document disappeared during OCR: document_id={document_id}"
                 )
+                return
 
             document.extracted_text = extracted_text
-            logger.info(
-                f"Text extracted: document_id={document_id}, length={len(extracted_text)}"
-            )
-
-            # Hierarchical chunking (section-aware)
-            chunk_results = chunking_service.chunk_text_hierarchical(extracted_text)
-            logger.info(
-                f"Text chunked: document_id={document_id}, "
-                f"chunks={len(chunk_results)}, "
-                f"sections={len(set(c.section_title for c in chunk_results if c.section_title))}"
-            )
 
             # Delete existing chunks
             db.query(DocumentChunk).filter(
                 DocumentChunk.document_id == document_id
             ).delete()
 
-            # Create new chunks with embeddings
-            for i, chunk_result in enumerate(chunk_results):
-                embedding_bytes = None
-                if embedding_service.is_available():
-                    try:
-                        embedding = await embedding_service.get_embedding(
-                            chunk_result.content
-                        )
-                        embedding_bytes = embedding_service.embedding_to_bytes(
-                            embedding
-                        )
-                    except Exception as e:
-                        logger.warning(
-                            f"Failed to generate chunk embedding: chunk={i}, error={e}"
-                        )
-
+            # Insert all chunks
+            for cd in chunk_data:
                 chunk = DocumentChunk(
                     document_id=document_id,
-                    chunk_index=i,
-                    section_title=chunk_result.section_title,
-                    content=chunk_result.content,
-                    embedding=embedding_bytes,
+                    chunk_index=cd["chunk_index"],
+                    section_title=cd["section_title"],
+                    content=cd["content"],
+                    embedding=cd["embedding"],
                 )
                 db.add(chunk)
 
             document.ocr_status = "completed"
             db.commit()
             logger.info(f"OCR processing completed: document_id={document_id}")
+        finally:
+            db.close()
 
-        except Exception as e:
+    except Exception as e:
+        logger.error(
+            f"OCR processing failed: document_id={document_id}, error={e}",
+            exc_info=True,
+        )
+        db = SessionLocal()
+        try:
+            document = db.query(Document).filter(Document.id == document_id).first()
+            if document:
+                document.ocr_status = "failed"
+                db.commit()
+        except Exception as rollback_err:
             logger.error(
-                f"OCR processing failed: document_id={document_id}, error={e}",
-                exc_info=True,
+                f"Failed to update status to failed: document_id={document_id}, "
+                f"error={rollback_err}"
             )
-            try:
-                db.rollback()
-                document = db.query(Document).filter(Document.id == document_id).first()
-                if document:
-                    document.ocr_status = "failed"
-                    db.commit()
-            except Exception as rollback_err:
-                logger.error(
-                    f"Failed to update status to failed: document_id={document_id}, "
-                    f"error={rollback_err}"
-                )
-
-    finally:
-        db.close()
+        finally:
+            db.close()
