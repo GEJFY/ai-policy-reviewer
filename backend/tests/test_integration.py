@@ -15,7 +15,7 @@ from app.db.database import get_db
 from app.models.base import Base
 from app.models.document import Document
 from app.models.check_item import CheckItem
-from app.models.review import Review, ReviewCheckItem, ReviewFinding
+from app.models.review import Review, ReviewFinding
 
 # Test database setup
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
