@@ -70,7 +70,9 @@ def client(db_session):
     app.dependency_overrides.clear()
 
 
-def _make_csv(headers: list[str], rows: list[list[str]], encoding: str = "utf-8") -> bytes:
+def _make_csv(
+    headers: list[str], rows: list[list[str]], encoding: str = "utf-8"
+) -> bytes:
     """CSV bytes を生成するヘルパー"""
     lines = [",".join(headers)]
     for row in rows:
@@ -270,7 +272,13 @@ class TestTermImportAPI:
         )
         response = client.post(
             "/api/v1/terms/import",
-            files={"file": ("terms.xlsx", excel_bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+            files={
+                "file": (
+                    "terms.xlsx",
+                    excel_bytes,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            },
         )
         assert response.status_code == 200
         data = response.json()
@@ -328,7 +336,14 @@ class TestCheckItemImportAPI:
     def test_import_check_items_csv(self, client: TestClient, db_session):
         """CSV からチェック項目をインポートできる"""
         csv_bytes = _make_csv(
-            ["name", "category", "description", "severity", "prompt_template", "is_active"],
+            [
+                "name",
+                "category",
+                "description",
+                "severity",
+                "prompt_template",
+                "is_active",
+            ],
             [
                 ["用語チェック", "TERMINOLOGY", "用語の統一性確認", "HIGH", "", "true"],
                 ["文法チェック", "GRAMMAR", "文法の正確性確認", "MEDIUM", "", "true"],
@@ -358,9 +373,25 @@ class TestWritingRuleImportAPI:
     def test_import_writing_rules_csv(self, client: TestClient, db_session):
         """CSV から記載ルールをインポートできる"""
         csv_bytes = _make_csv(
-            ["name", "rule_type", "pattern", "correct_form", "example_bad", "example_good", "is_active"],
             [
-                ["敬体統一", "STYLE", "である調", "です・ます調", "遂行する。", "遂行します。", "true"],
+                "name",
+                "rule_type",
+                "pattern",
+                "correct_form",
+                "example_bad",
+                "example_good",
+                "is_active",
+            ],
+            [
+                [
+                    "敬体統一",
+                    "STYLE",
+                    "である調",
+                    "です・ます調",
+                    "遂行する。",
+                    "遂行します。",
+                    "true",
+                ],
             ],
         )
         response = client.post(

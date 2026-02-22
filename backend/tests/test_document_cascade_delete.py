@@ -222,9 +222,7 @@ class TestDocumentCascadeDelete:
         assert db_session.query(Document).filter(Document.id == doc_id).first() is None
 
         # レビューが削除されている
-        assert (
-            db_session.query(Review).filter(Review.id == review_id).first() is None
-        )
+        assert db_session.query(Review).filter(Review.id == review_id).first() is None
 
         # 指摘事項が削除されている
         assert (
@@ -279,8 +277,7 @@ class TestDocumentCascadeDelete:
         # 子会社文書は残っている
         sub_id = document_with_comparison["sub_doc"].id
         assert (
-            db_session.query(Document).filter(Document.id == sub_id).first()
-            is not None
+            db_session.query(Document).filter(Document.id == sub_id).first() is not None
         )
 
     def test_delete_subsidiary_document_removes_comparison(
@@ -320,9 +317,7 @@ class TestDocumentCascadeDelete:
 
         # グループ自体は残っている
         assert (
-            db_session.query(DocumentGroup)
-            .filter(DocumentGroup.id == group_id)
-            .first()
+            db_session.query(DocumentGroup).filter(DocumentGroup.id == group_id).first()
             is not None
         )
 
@@ -345,6 +340,4 @@ class TestDocumentCascadeDelete:
         response = client.delete(f"/api/v1/documents/{doc.id}")
         assert response.status_code == 204
 
-        assert (
-            db_session.query(Document).filter(Document.id == doc.id).first() is None
-        )
+        assert db_session.query(Document).filter(Document.id == doc.id).first() is None
