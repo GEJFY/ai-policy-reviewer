@@ -231,13 +231,9 @@ class TestConsistencyCheck:
         )
         group_id = create_resp.json()["id"]
 
-        response = client.post(
-            f"/api/v1/document-groups/{group_id}/consistency-check"
-        )
+        response = client.post(f"/api/v1/document-groups/{group_id}/consistency-check")
         assert response.status_code == 400
 
     def test_consistency_check_group_not_found(self, client: TestClient):
-        response = client.post(
-            "/api/v1/document-groups/9999/consistency-check"
-        )
+        response = client.post("/api/v1/document-groups/9999/consistency-check")
         assert response.status_code == 404
