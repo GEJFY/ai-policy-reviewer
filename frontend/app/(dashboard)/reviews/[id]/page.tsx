@@ -256,20 +256,22 @@ export default function ReviewDetailPage() {
                   </div>
                 )}
                 {review.status === 'completed' && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleExport}
-                    disabled={exporting}
-                  >
-                    {exporting ? (
-                      <RefreshCw className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <Download className="mr-1 h-4 w-4" aria-hidden="true" />
-                    )}
-                    Excel出力
-                  </Button>
-                  <HelpTooltip text={TIPS.reviews.export} />
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleExport}
+                      disabled={exporting}
+                    >
+                      {exporting ? (
+                        <RefreshCw className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Download className="mr-1 h-4 w-4" aria-hidden="true" />
+                      )}
+                      Excel出力
+                    </Button>
+                    <HelpTooltip text={TIPS.reviews.export} />
+                  </>
                 )}
               </div>
             </CardTitle>
