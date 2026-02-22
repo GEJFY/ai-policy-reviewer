@@ -71,6 +71,7 @@ class ReviewFinding(Base):
     reviewed_by = Column(String(255))
     reviewed_at = Column(DateTime)
     comment = Column(Text)  # Reviewer's comment
+    edited_suggestion = Column(Text)  # User-edited suggestion text
     created_at = Column(DateTime, server_default=func.now())
 
     # Relationships

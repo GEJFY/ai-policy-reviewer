@@ -148,7 +148,26 @@ export interface Finding {
   reviewed_by: string | null
   reviewed_at: string | null
   comment: string | null
+  edited_suggestion: string | null
   created_at: string
+}
+
+export interface FindingContext {
+  finding_id: number
+  context_text: string
+  highlight_start: number
+  highlight_end: number
+  original_text: string | null
+  suggestion: string | null
+  corrected_text: string
+}
+
+export interface RevisedText {
+  review_id: number
+  original_text: string
+  revised_text: string
+  changes_applied: number
+  total_approved: number
 }
 
 // Settings types
@@ -459,10 +478,10 @@ export const findingsAPI = {
     return fetchAPI<Finding[]>(`/api/v1/reviews/${reviewId}/findings${query}`)
   },
   get: (id: number) => fetchAPI<Finding>(`/api/v1/findings/${id}`),
-  approve: (id: number, comment?: string) =>
+  approve: (id: number, comment?: string, edited_suggestion?: string) =>
     fetchAPI<Finding>(`/api/v1/findings/${id}/approve`, {
       method: 'PUT',
-      body: JSON.stringify({ comment }),
+      body: JSON.stringify({ comment, edited_suggestion }),
     }),
   reject: (id: number, comment?: string) =>
     fetchAPI<Finding>(`/api/v1/findings/${id}/reject`, {
@@ -484,4 +503,8 @@ export const findingsAPI = {
       method: 'POST',
       body: JSON.stringify({ finding_ids: findingIds, action, comment }),
     }),
+  getContext: (id: number) =>
+    fetchAPI<FindingContext>(`/api/v1/findings/${id}/context`),
+  getRevisedText: (reviewId: number) =>
+    fetchAPI<RevisedText>(`/api/v1/reviews/${reviewId}/revised-text`),
 }
