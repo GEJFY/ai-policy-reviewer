@@ -15,7 +15,6 @@ from app.models.comparison import (
 )
 from app.schemas.comparison import (
     ComparisonProjectCreate,
-    ComparisonProjectUpdate,
     SetSubsidiaryRequest,
     ChecklistEditRequest,
     ComparisonProjectResponse,
