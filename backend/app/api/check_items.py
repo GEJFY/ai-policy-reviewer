@@ -52,6 +52,19 @@ async def get_categories():
     ]
 
 
+@router.get("/template")
+async def download_check_item_template():
+    """Download CSV template for check item import."""
+    content = generate_csv_template(CHECK_ITEM_HEADERS, CHECK_ITEM_SAMPLE)
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": "attachment; filename=check_items_template.csv"
+        },
+    )
+
+
 @router.get("/{item_id}", response_model=CheckItemResponse)
 async def get_check_item(item_id: int, db: Session = Depends(get_db)):
     """Get a specific check item by ID."""
@@ -130,19 +143,6 @@ def _get_category_label(category: CheckCategory) -> str:
         CheckCategory.OPERATIONAL: "実務適合性",
     }
     return labels.get(category, category.value)
-
-
-@router.get("/template")
-async def download_check_item_template():
-    """Download CSV template for check item import."""
-    content = generate_csv_template(CHECK_ITEM_HEADERS, CHECK_ITEM_SAMPLE)
-    return Response(
-        content=content,
-        media_type="text/csv; charset=utf-8",
-        headers={
-            "Content-Disposition": "attachment; filename=check_items_template.csv"
-        },
-    )
 
 
 @router.post("/import")

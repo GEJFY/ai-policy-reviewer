@@ -19,7 +19,11 @@ AIを活用した社内規程文書のレビューシステムです。マルチ
   - **GCP Vertex AI**: Gemini 3 Pro/Flash Preview, Claude Opus 4.6, Claude Sonnet 4.5
   - **Ollama（ローカル）**: qwen2.5:3b, gemma-2-2b-jpn-it（無料、オフライン対応）
 - **マスタデータ管理**: 用語辞書、チェック項目、記載ルールの管理
+- **CSV/Excelインポート**: 用語辞書・チェック項目・記載ルールの一括インポート（テンプレートDL付き）
 - **承認ワークフロー**: 指摘事項の承認/却下/保留の管理（ローディングスピナー・エラー通知付き）
+- **レビュー一括エクスポート**: 複数レビュー結果のExcel一括ダウンロード
+- **親子会社規程比較**: 親会社・子会社の規程を比較し差異を自動検出
+- **規程グループ管理**: 関連する規程文書をグループ化して整合性チェック
 - **ベクトル検索**: 類似用語の検索機能
 - **安全性**: ファイルアップロード50MB制限、レビュー10分タイムアウト、レート制限
 
@@ -215,11 +219,14 @@ ai-policy-reviewer/
 ├── backend/
 │   ├── app/
 │   │   ├── api/              # APIエンドポイント
-│   │   │   ├── documents.py  # 文書管理（50MBサイズ制限付き）
-│   │   │   ├── reviews.py    # レビュー管理（10分タイムアウト付き）
-│   │   │   ├── terms.py      # 用語辞書
-│   │   │   ├── check_items.py # チェック項目
-│   │   │   ├── writing_rules.py # 記載ルール
+│   │   │   ├── documents.py  # 文書管理（50MBサイズ制限、カスケード削除）
+│   │   │   ├── reviews.py    # レビュー管理（10分タイムアウト、一括エクスポート）
+│   │   │   ├── terms.py      # 用語辞書（CSV/Excelインポート対応）
+│   │   │   ├── check_items.py # チェック項目（CSV/Excelインポート対応）
+│   │   │   ├── writing_rules.py # 記載ルール（CSV/Excelインポート対応）
+│   │   │   ├── comparisons.py # 親子会社規程比較
+│   │   │   ├── document_groups.py # 規程グループ管理
+│   │   │   ├── export.py     # Excelエクスポート
 │   │   │   └── health.py     # ヘルスチェック
 │   │   ├── auth/             # JWT認証
 │   │   ├── core/             # ログ、ミドルウェア、例外、セキュリティ
@@ -264,8 +271,14 @@ ai-policy-reviewer/
 | `/api/v1/terms` | GET/POST | 用語辞書の一覧/登録 |
 | `/api/v1/terms/{id}` | GET/PUT/DELETE | 用語の詳細/更新/削除 |
 | `/api/v1/terms/search` | POST | ベクトル検索 |
+| `/api/v1/terms/template` | GET | インポート用CSVテンプレートDL |
+| `/api/v1/terms/import` | POST | CSV/Excelインポート |
 | `/api/v1/check-items` | GET/POST | チェック項目の一覧/登録 |
+| `/api/v1/check-items/template` | GET | インポート用CSVテンプレートDL |
+| `/api/v1/check-items/import` | POST | CSV/Excelインポート |
 | `/api/v1/writing-rules` | GET/POST | 記載ルールの一覧/登録 |
+| `/api/v1/writing-rules/template` | GET | インポート用CSVテンプレートDL |
+| `/api/v1/writing-rules/import` | POST | CSV/Excelインポート |
 
 ### 文書・レビュー管理
 
@@ -273,10 +286,13 @@ ai-policy-reviewer/
 |--------------|---------|------|
 | `/api/v1/documents` | GET/POST | 文書の一覧/アップロード |
 | `/api/v1/documents/upload` | POST | PDFアップロード（最大50MB） |
+| `/api/v1/documents/{id}` | DELETE | 文書削除（関連レコード自動削除） |
 | `/api/v1/documents/{id}/ocr` | POST | OCR再処理 |
 | `/api/v1/reviews` | GET/POST | レビューの一覧/実行 |
 | `/api/v1/reviews/{id}` | GET | レビュー詳細 |
 | `/api/v1/reviews/{id}/findings` | GET | 指摘事項一覧 |
+| `/api/v1/reviews/{id}/export` | GET | レビュー結果Excelエクスポート |
+| `/api/v1/reviews/bulk-export` | POST | 複数レビュー一括Excelエクスポート |
 
 ### 承認ワークフロー
 
@@ -289,6 +305,15 @@ ai-policy-reviewer/
 | `/api/v1/findings/{id}/reset` | PUT | ステータスリセット（PENDINGに戻す） |
 | `/api/v1/reviews/{id}/findings/summary` | GET | 指摘事項サマリー統計 |
 | `/api/v1/reviews/{id}/findings/bulk-approve` | POST | 一括承認/却下/保留 |
+
+### 規程グループ・比較
+
+| エンドポイント | メソッド | 説明 |
+|--------------|---------|------|
+| `/api/v1/document-groups` | GET/POST | 規程グループの一覧/作成 |
+| `/api/v1/document-groups/{id}` | GET/PUT/DELETE | グループの詳細/更新/削除 |
+| `/api/v1/comparisons` | GET/POST | 親子会社比較プロジェクトの一覧/作成 |
+| `/api/v1/comparisons/{id}` | GET/DELETE | 比較プロジェクトの詳細/削除 |
 
 ### システム
 
@@ -419,6 +444,7 @@ LLM_TIER=balanced  # precision, balanced, cost_effective
 - [セットアップガイド](docs/SETUP_GUIDE.md) - 詳細なセットアップ手順
 - [ユーザーマニュアル](docs/USER_MANUAL.md) - 画面操作の詳細
 - [デモガイド](docs/DEMO_GUIDE.md) - デモ操作の手順
+- [API仕様書](docs/api-spec.md) - REST APIリファレンス
 - [機能仕様書](docs/functional-specification.md) - プロンプト設計・API設計
 - [クイックスタート](docs/getting-started/quick-start.md) - 5分で始める
 - [運用手順書](docs/operations/runbook.md) - 監視・インシデント対応

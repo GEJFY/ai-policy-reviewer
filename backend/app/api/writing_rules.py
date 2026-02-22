@@ -50,6 +50,19 @@ async def get_rule_types():
     return [{"value": rt.value, "label": _get_type_label(rt)} for rt in RuleType]
 
 
+@router.get("/template")
+async def download_writing_rule_template():
+    """Download CSV template for writing rule import."""
+    content = generate_csv_template(WRITING_RULE_HEADERS, WRITING_RULE_SAMPLE)
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": "attachment; filename=writing_rules_template.csv"
+        },
+    )
+
+
 @router.get("/{rule_id}", response_model=WritingRuleResponse)
 async def get_writing_rule(rule_id: int, db: Session = Depends(get_db)):
     """Get a specific writing rule by ID."""
@@ -125,19 +138,6 @@ def _get_type_label(rule_type: RuleType) -> str:
         RuleType.TERMINOLOGY: "用語ルール",
     }
     return labels.get(rule_type, rule_type.value)
-
-
-@router.get("/template")
-async def download_writing_rule_template():
-    """Download CSV template for writing rule import."""
-    content = generate_csv_template(WRITING_RULE_HEADERS, WRITING_RULE_SAMPLE)
-    return Response(
-        content=content,
-        media_type="text/csv; charset=utf-8",
-        headers={
-            "Content-Disposition": "attachment; filename=writing_rules_template.csv"
-        },
-    )
 
 
 @router.post("/import")

@@ -54,6 +54,17 @@ async def list_terms(
     return terms
 
 
+@router.get("/template")
+async def download_term_template():
+    """Download CSV template for term import."""
+    content = generate_csv_template(TERM_HEADERS, TERM_SAMPLE)
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=terms_template.csv"},
+    )
+
+
 @router.get("/{term_id}", response_model=TermResponse)
 async def get_term(term_id: int, db: Session = Depends(get_db)):
     """Get a specific term by ID."""
@@ -250,17 +261,6 @@ async def bulk_create_terms(request: TermBulkCreate, db: Session = Depends(get_d
             term.aliases = json.loads(term.aliases)
 
     return created_terms
-
-
-@router.get("/template")
-async def download_term_template():
-    """Download CSV template for term import."""
-    content = generate_csv_template(TERM_HEADERS, TERM_SAMPLE)
-    return Response(
-        content=content,
-        media_type="text/csv; charset=utf-8",
-        headers={"Content-Disposition": "attachment; filename=terms_template.csv"},
-    )
 
 
 @router.post("/import")
