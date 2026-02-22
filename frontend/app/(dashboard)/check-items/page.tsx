@@ -10,6 +10,8 @@ import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { checkItemsAPI, CheckItem, CheckItemCreate } from '@/lib/api'
 import { useToast } from '@/components/ui/toast'
 import { useConfirm } from '@/components/ui/confirm-dialog'
+import { HelpTooltip } from '@/components/ui/tooltip'
+import { TIPS } from '@/lib/tooltip-texts'
 
 const CATEGORIES = [
   { value: 'TERMINOLOGY', label: '用語統一' },
@@ -124,16 +126,16 @@ export default function CheckItemsPage() {
                 <thead className="border-b bg-gray-50">
                   <tr>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                      項目名
+                      項目名 <HelpTooltip text={TIPS.checkItems.name} />
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                      カテゴリ
+                      カテゴリ <HelpTooltip text={TIPS.checkItems.category} />
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                      重要度
+                      重要度 <HelpTooltip text={TIPS.checkItems.severity} />
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                      状態
+                      状態 <HelpTooltip text={TIPS.checkItems.isActive} />
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       説明
@@ -327,6 +329,7 @@ function CheckItemFormModal({
           <div>
             <label className="block text-sm font-medium text-gray-700">
               カスタムプロンプト（オプション）
+              <HelpTooltip text={TIPS.checkItems.promptTemplate} />
             </label>
             <textarea
               value={formData.prompt_template || ''}

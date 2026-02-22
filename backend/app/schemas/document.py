@@ -34,6 +34,7 @@ class DocumentResponse(DocumentBase):
     file_type: str | None
     extracted_text: str | None
     ocr_status: str
+    ocr_progress: str | None = None
     created_at: datetime
     updated_at: datetime
 

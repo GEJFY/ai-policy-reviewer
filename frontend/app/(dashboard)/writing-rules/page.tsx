@@ -8,6 +8,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { writingRulesAPI, WritingRule, WritingRuleCreate } from '@/lib/api'
+import { HelpTooltip } from '@/components/ui/tooltip'
+import { TIPS } from '@/lib/tooltip-texts'
 
 const RULE_TYPES = [
   { value: 'STYLE', label: '文体ルール' },
@@ -102,16 +104,16 @@ export default function WritingRulesPage() {
                 <thead className="border-b bg-gray-50">
                   <tr>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                      ルール名
+                      ルール名 <HelpTooltip text={TIPS.writingRules.name} />
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                      タイプ
+                      タイプ <HelpTooltip text={TIPS.writingRules.ruleType} />
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       状態
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                      正しい形式
+                      正しい形式 <HelpTooltip text={TIPS.writingRules.correctForm} />
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       操作

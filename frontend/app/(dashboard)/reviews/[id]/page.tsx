@@ -21,6 +21,8 @@ import {
 } from 'lucide-react'
 import { reviewsAPI, findingsAPI, Review, Finding } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
+import { HelpTooltip } from '@/components/ui/tooltip'
+import { TIPS } from '@/lib/tooltip-texts'
 
 export default function ReviewDetailPage() {
   const params = useParams()
@@ -254,19 +256,22 @@ export default function ReviewDetailPage() {
                   </div>
                 )}
                 {review.status === 'completed' && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleExport}
-                    disabled={exporting}
-                  >
-                    {exporting ? (
-                      <RefreshCw className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />
-                    ) : (
-                      <Download className="mr-1 h-4 w-4" aria-hidden="true" />
-                    )}
-                    Excel出力
-                  </Button>
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleExport}
+                      disabled={exporting}
+                    >
+                      {exporting ? (
+                        <RefreshCw className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Download className="mr-1 h-4 w-4" aria-hidden="true" />
+                      )}
+                      Excel出力
+                    </Button>
+                    <HelpTooltip text={TIPS.reviews.export} />
+                  </>
                 )}
               </div>
             </CardTitle>
@@ -328,6 +333,7 @@ export default function ReviewDetailPage() {
               <Check className="mr-1 h-4 w-4" aria-hidden="true" />
               一括承認
             </Button>
+            <HelpTooltip text={TIPS.reviews.bulkApprove} />
             <Button
               size="sm"
               variant="outline"
@@ -376,6 +382,7 @@ export default function ReviewDetailPage() {
           >
             未対応をすべて選択
           </button>
+          <HelpTooltip text={TIPS.reviews.selectAll} />
         </div>
 
         {/* Findings List */}

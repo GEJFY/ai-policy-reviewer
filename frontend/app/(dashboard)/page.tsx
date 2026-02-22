@@ -17,6 +17,8 @@ import {
   PenLine,
 } from 'lucide-react'
 import { dashboardAPI, reviewsAPI, DashboardStats, Review } from '@/lib/api'
+import { HelpTooltip } from '@/components/ui/tooltip'
+import { TIPS } from '@/lib/tooltip-texts'
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
@@ -58,30 +60,35 @@ export default function DashboardPage() {
             value={stats?.document_count ?? 0}
             icon={FileText}
             href="/documents"
+            tooltip={TIPS.dashboard.documentCount}
           />
           <StatsCard
             title="レビュー"
             value={stats?.review_count ?? 0}
             icon={FileSearch}
             href="/reviews"
+            tooltip={TIPS.dashboard.reviewCount}
           />
           <StatsCard
             title="用語辞書"
             value={stats?.term_count ?? 0}
             icon={BookOpen}
             href="/terms"
+            tooltip={TIPS.dashboard.termCount}
           />
           <StatsCard
             title="チェック項目"
             value={stats?.check_item_count ?? 0}
             icon={CheckSquare}
             href="/check-items"
+            tooltip={TIPS.dashboard.checkItemCount}
           />
           <StatsCard
             title="記載ルール"
             value={stats?.writing_rule_count ?? 0}
             icon={PenLine}
             href="/writing-rules"
+            tooltip={TIPS.dashboard.writingRuleCount}
           />
         </div>
 
@@ -93,6 +100,7 @@ export default function DashboardPage() {
               <CardHeader>
                 <CardTitle className="text-sm font-medium text-gray-500">
                   指摘事項（重要度別）
+                  <HelpTooltip text={TIPS.dashboard.findingSummary} />
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -184,7 +192,10 @@ export default function DashboardPage() {
 
         {/* Recent Reviews */}
         <div className="mt-8">
-          <h3 className="mb-4 text-lg font-semibold">最近のレビュー</h3>
+          <h3 className="mb-4 text-lg font-semibold">
+            最近のレビュー
+            <HelpTooltip text={TIPS.dashboard.recentReviews} />
+          </h3>
           <Card>
             <CardContent className="p-0">
               {loading ? (
@@ -240,11 +251,13 @@ function StatsCard({
   value,
   icon: Icon,
   href,
+  tooltip,
 }: {
   title: string
   value: number
   icon: React.ElementType
   href: string
+  tooltip?: string
 }) {
   return (
     <Link href={href}>
@@ -252,6 +265,7 @@ function StatsCard({
         <CardHeader className="flex flex-row items-center justify-between pb-2">
           <CardTitle className="text-sm font-medium text-gray-500">
             {title}
+            {tooltip && <HelpTooltip text={tooltip} />}
           </CardTitle>
           <Icon className="h-5 w-5 text-gray-400" aria-hidden="true" />
         </CardHeader>

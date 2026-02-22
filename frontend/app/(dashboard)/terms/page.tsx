@@ -9,6 +9,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Plus, Search, Pencil, Trash2 } from 'lucide-react'
 import { termsAPI, Term, TermCreate } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
+import { HelpTooltip } from '@/components/ui/tooltip'
+import { TIPS } from '@/lib/tooltip-texts'
 
 const CATEGORIES = ['人事', '財務', 'IT', '法務', '一般']
 
@@ -129,16 +131,16 @@ export default function TermsPage() {
                 <thead className="border-b bg-gray-50">
                   <tr>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                      用語
+                      用語 <HelpTooltip text={TIPS.terms.term} />
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                      別名
+                      別名 <HelpTooltip text={TIPS.terms.aliases} />
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                      カテゴリ
+                      カテゴリ <HelpTooltip text={TIPS.terms.category} />
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                      定義
+                      定義 <HelpTooltip text={TIPS.terms.definition} />
                     </th>
                     <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                       操作
