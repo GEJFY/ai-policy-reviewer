@@ -284,6 +284,44 @@ export interface DashboardStats {
   review_by_status: { pending: number; processing: number; completed: number; failed: number }
 }
 
+// Import result type
+export interface ImportResult {
+  success: number
+  errors: string[]
+}
+
+// Helper: download file from URL
+async function downloadFile(url: string, fallbackFilename: string) {
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error('ダウンロードに失敗しました')
+  }
+  const blob = await response.blob()
+  const blobUrl = window.URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = blobUrl
+  a.download = fallbackFilename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.URL.revokeObjectURL(blobUrl)
+}
+
+// Helper: upload file for import
+async function uploadImportFile(url: string, file: File): Promise<ImportResult> {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await fetch(url, {
+    method: 'POST',
+    body: formData,
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error(error.detail || 'インポートに失敗しました')
+  }
+  return response.json()
+}
+
 // API Functions
 
 // Dashboard
@@ -322,6 +360,8 @@ export const termsAPI = {
       method: 'POST',
       body: JSON.stringify({ query, top_k: top_k || 10 }),
     }),
+  downloadTemplate: () => downloadFile(`${API_BASE}/api/v1/terms/template`, 'terms_template.csv'),
+  importFile: (file: File) => uploadImportFile(`${API_BASE}/api/v1/terms/import`, file),
 }
 
 // Check Items
@@ -349,6 +389,8 @@ export const checkItemsAPI = {
     fetchAPI<void>(`/api/v1/check-items/${id}`, { method: 'DELETE' }),
   getCategories: () =>
     fetchAPI<{ value: string; label: string }[]>('/api/v1/check-items/categories'),
+  downloadTemplate: () => downloadFile(`${API_BASE}/api/v1/check-items/template`, 'check_items_template.csv'),
+  importFile: (file: File) => uploadImportFile(`${API_BASE}/api/v1/check-items/import`, file),
 }
 
 // Writing Rules
@@ -374,6 +416,8 @@ export const writingRulesAPI = {
     }),
   delete: (id: number) =>
     fetchAPI<void>(`/api/v1/writing-rules/${id}`, { method: 'DELETE' }),
+  downloadTemplate: () => downloadFile(`${API_BASE}/api/v1/writing-rules/template`, 'writing_rules_template.csv'),
+  importFile: (file: File) => uploadImportFile(`${API_BASE}/api/v1/writing-rules/import`, file),
 }
 
 // Documents

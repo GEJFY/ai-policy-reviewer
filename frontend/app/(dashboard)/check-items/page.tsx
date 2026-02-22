@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Upload, FileSpreadsheet } from 'lucide-react'
 import { checkItemsAPI, CheckItem, CheckItemCreate } from '@/lib/api'
+import { ImportModal } from '@/components/import-modal'
 import { useToast } from '@/components/ui/toast'
 import { useConfirm } from '@/components/ui/confirm-dialog'
 import { HelpTooltip } from '@/components/ui/tooltip'
@@ -34,6 +35,7 @@ export default function CheckItemsPage() {
   const [loading, setLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [showForm, setShowForm] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [editingItem, setEditingItem] = useState<CheckItem | null>(null)
   const { showToast } = useToast()
   const { confirm } = useConfirm()
@@ -106,10 +108,16 @@ export default function CheckItemsPage() {
               </option>
             ))}
           </select>
-          <Button onClick={() => { setEditingItem(null); setShowForm(true); }}>
-            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-            新規登録
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowImport(true)}>
+              <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
+              インポート
+            </Button>
+            <Button onClick={() => { setEditingItem(null); setShowForm(true); }}>
+              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+              新規登録
+            </Button>
+          </div>
         </div>
 
         {/* Items Table */}
@@ -211,6 +219,17 @@ export default function CheckItemsPage() {
             item={editingItem}
             onClose={() => { setShowForm(false); setEditingItem(null); }}
             onSaved={() => { setShowForm(false); setEditingItem(null); loadItems(); }}
+          />
+        )}
+
+        {/* Import Modal */}
+        {showImport && (
+          <ImportModal
+            title="チェック項目インポート"
+            onClose={() => setShowImport(false)}
+            onImport={(file) => checkItemsAPI.importFile(file)}
+            onDownloadTemplate={() => checkItemsAPI.downloadTemplate()}
+            onSuccess={() => loadItems()}
           />
         )}
       </div>

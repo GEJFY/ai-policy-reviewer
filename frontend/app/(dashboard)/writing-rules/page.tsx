@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Upload, FileSpreadsheet } from 'lucide-react'
 import { writingRulesAPI, WritingRule, WritingRuleCreate } from '@/lib/api'
+import { ImportModal } from '@/components/import-modal'
 import { HelpTooltip } from '@/components/ui/tooltip'
 import { TIPS } from '@/lib/tooltip-texts'
 
@@ -22,6 +23,7 @@ export default function WritingRulesPage() {
   const [loading, setLoading] = useState(true)
   const [selectedType, setSelectedType] = useState<string>('')
   const [showForm, setShowForm] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [editingRule, setEditingRule] = useState<WritingRule | null>(null)
 
   useEffect(() => {
@@ -84,10 +86,16 @@ export default function WritingRulesPage() {
               </option>
             ))}
           </select>
-          <Button onClick={() => { setEditingRule(null); setShowForm(true); }}>
-            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
-            新規登録
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowImport(true)}>
+              <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
+              インポート
+            </Button>
+            <Button onClick={() => { setEditingRule(null); setShowForm(true); }}>
+              <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+              新規登録
+            </Button>
+          </div>
         </div>
 
         {/* Rules Table */}
@@ -179,6 +187,17 @@ export default function WritingRulesPage() {
             rule={editingRule}
             onClose={() => { setShowForm(false); setEditingRule(null); }}
             onSaved={() => { setShowForm(false); setEditingRule(null); loadRules(); }}
+          />
+        )}
+
+        {/* Import Modal */}
+        {showImport && (
+          <ImportModal
+            title="記載ルールインポート"
+            onClose={() => setShowImport(false)}
+            onImport={(file) => writingRulesAPI.importFile(file)}
+            onDownloadTemplate={() => writingRulesAPI.downloadTemplate()}
+            onSuccess={() => loadRules()}
           />
         )}
       </div>

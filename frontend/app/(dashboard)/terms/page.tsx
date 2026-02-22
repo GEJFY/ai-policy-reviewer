@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, Upload, FileSpreadsheet } from 'lucide-react'
 import { termsAPI, Term, TermCreate } from '@/lib/api'
+import { ImportModal } from '@/components/import-modal'
 import { formatDate } from '@/lib/utils'
 import { HelpTooltip } from '@/components/ui/tooltip'
 import { TIPS } from '@/lib/tooltip-texts'
@@ -20,6 +21,7 @@ export default function TermsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [showForm, setShowForm] = useState(false)
+  const [showImport, setShowImport] = useState(false)
   const [editingTerm, setEditingTerm] = useState<Term | null>(null)
 
   useEffect(() => {
@@ -110,6 +112,10 @@ export default function TermsPage() {
                 </option>
               ))}
             </select>
+            <Button variant="outline" onClick={() => setShowImport(true)}>
+              <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
+              インポート
+            </Button>
             <Button onClick={() => { setEditingTerm(null); setShowForm(true); }}>
               <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
               新規登録
@@ -194,6 +200,17 @@ export default function TermsPage() {
             term={editingTerm}
             onClose={() => { setShowForm(false); setEditingTerm(null); }}
             onSaved={() => { setShowForm(false); setEditingTerm(null); loadTerms(); }}
+          />
+        )}
+
+        {/* Import Modal */}
+        {showImport && (
+          <ImportModal
+            title="用語辞書インポート"
+            onClose={() => setShowImport(false)}
+            onImport={(file) => termsAPI.importFile(file)}
+            onDownloadTemplate={() => termsAPI.downloadTemplate()}
+            onSuccess={() => loadTerms()}
           />
         )}
       </div>
