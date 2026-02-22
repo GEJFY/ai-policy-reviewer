@@ -575,6 +575,149 @@ async def download_revised_document(review_id: int, db: Session = Depends(get_db
     )
 
 
+@router.post("/bulk-export")
+async def bulk_export_reviews(
+    request: dict,
+    db: Session = Depends(get_db),
+):
+    """Export multiple reviews as a single Excel file."""
+    from app.api.export import _build_workbook, _encode_filename
+    import io
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment
+
+    review_ids = request.get("review_ids", [])
+    if not review_ids:
+        raise HTTPException(status_code=400, detail="review_ids is required")
+
+    # Fetch all reviews with their documents and findings
+    reviews = (
+        db.query(Review)
+        .options(joinedload(Review.document))
+        .filter(Review.id.in_(review_ids))
+        .order_by(Review.created_at.desc())
+        .all()
+    )
+
+    if not reviews:
+        raise HTTPException(status_code=404, detail="No reviews found")
+
+    # If single review, use existing single-export logic
+    if len(reviews) == 1:
+        review = reviews[0]
+        document = review.document
+        findings = (
+            db.query(ReviewFinding)
+            .filter(ReviewFinding.review_id == review.id)
+            .order_by(ReviewFinding.severity.desc(), ReviewFinding.created_at)
+            .all()
+        )
+        wb = _build_workbook(review, document, findings)
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+        doc_title = document.title if document else f"review_{review.id}"
+        safe_title = doc_title.replace("/", "_").replace("\\", "_").replace(":", "_")
+        filename = f"{safe_title}_レビュー結果.xlsx"
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f"attachment; filename*=UTF-8''{_encode_filename(filename)}"
+            },
+        )
+
+    # Multiple reviews: build a workbook with one sheet per review
+    wb = Workbook()
+    wb.remove(wb.active)
+
+    for review in reviews:
+        findings = (
+            db.query(ReviewFinding)
+            .filter(ReviewFinding.review_id == review.id)
+            .order_by(ReviewFinding.severity.desc(), ReviewFinding.created_at)
+            .all()
+        )
+        doc_title = review.document.title if review.document else f"Review_{review.id}"
+        # Sheet names max 31 chars
+        sheet_name = doc_title[:28] + "..." if len(doc_title) > 31 else doc_title
+        # Remove invalid sheet name characters
+        for ch in ["\\", "/", "*", "?", ":", "[", "]"]:
+            sheet_name = sheet_name.replace(ch, "_")
+
+        ws = wb.create_sheet(title=sheet_name)
+        # Build findings table directly
+        from app.api.export import (
+            _HEADER_FONT,
+            _HEADER_FILL,
+            _HEADER_ALIGNMENT,
+            _THIN_BORDER,
+            _SEVERITY_FILLS,
+            _STATUS_LABELS,
+        )
+
+        headers = [
+            ("No.", 6),
+            ("重要度", 10),
+            ("種別", 15),
+            ("箇所", 15),
+            ("問題箇所テキスト", 30),
+            ("問題内容", 40),
+            ("改善提案", 40),
+            ("根拠", 30),
+            ("ステータス", 12),
+            ("コメント", 30),
+        ]
+
+        for col, (name, width) in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col, value=name)
+            cell.font = _HEADER_FONT
+            cell.fill = _HEADER_FILL
+            cell.alignment = _HEADER_ALIGNMENT
+            cell.border = _THIN_BORDER
+            ws.column_dimensions[cell.column_letter].width = width
+
+        wrap_alignment = Alignment(vertical="top", wrap_text=True)
+        for idx, finding in enumerate(findings, 1):
+            row = idx + 1
+            values = [
+                idx,
+                finding.severity,
+                finding.issue_type,
+                finding.location or "",
+                finding.original_text or "",
+                finding.description,
+                finding.suggestion or "",
+                finding.rationale or "",
+                _STATUS_LABELS.get(str(finding.status), str(finding.status)),
+                finding.comment or "",
+            ]
+            for col_idx, value in enumerate(values, 1):
+                cell = ws.cell(row=row, column=col_idx, value=value)
+                cell.border = _THIN_BORDER
+                cell.alignment = wrap_alignment
+            severity_fill = _SEVERITY_FILLS.get(str(finding.severity))
+            if severity_fill:
+                ws.cell(row=row, column=2).fill = severity_fill
+
+        if findings:
+            ws.auto_filter.ref = f"A1:J{len(findings) + 1}"
+        ws.freeze_panes = "A2"
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    filename = "レビュー結果_一括.xlsx"
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{_encode_filename(filename)}"
+        },
+    )
+
+
 async def execute_review_task(review_id: int, check_item_ids: list[int]):
     """
     バックグラウンドでレビューを実行するタスク関数。

@@ -500,6 +500,34 @@ export const reviewsAPI = {
     a.remove()
     window.URL.revokeObjectURL(url)
   },
+  bulkExport: async (reviewIds: number[]) => {
+    const response = await fetch(`${API_BASE}/api/v1/reviews/bulk-export`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ review_ids: reviewIds }),
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.detail || 'Bulk export failed')
+    }
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const disposition = response.headers.get('content-disposition')
+    let filename = 'レビュー結果_一括.xlsx'
+    if (disposition) {
+      const match = disposition.match(/filename\*=UTF-8''(.+)/)
+      if (match) {
+        filename = decodeURIComponent(match[1])
+      }
+    }
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  },
 }
 
 // Comparisons
