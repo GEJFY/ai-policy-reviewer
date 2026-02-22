@@ -681,9 +681,7 @@ class TestRevisedDocumentDownload:
         response = client.get("/api/v1/reviews/9999/revised-document")
         assert response.status_code == 404
 
-    def test_download_revised_document_no_text(
-        self, client: TestClient, db_session
-    ):
+    def test_download_revised_document_no_text(self, client: TestClient, db_session):
         """テキストなし文書の改訂版ダウンロード"""
         doc = Document(
             title="空文書.pdf",
