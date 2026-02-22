@@ -70,7 +70,7 @@ async def check_consistency(
         raise RuntimeError("LLM service not available")
 
     documents = db.query(Document).filter(Document.id.in_(document_ids)).all()
-    doc_map = {d.id: d for d in documents}
+    doc_map: dict[int, Document] = {int(d.id): d for d in documents}
 
     all_findings = []
 
@@ -117,7 +117,12 @@ async def _check_pair(
     )
 
     try:
-        response = await llm_service.generate(prompt)
+        response = await llm_service.generate(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=4000,
+            json_mode=True,
+        )
         if not response or not response.content:
             return []
 
@@ -145,8 +150,8 @@ def _get_document_content(db: Session, doc: Document) -> str:
         .all()
     )
     if chunks:
-        return "\n".join(c.content for c in chunks)
-    return doc.extracted_text or ""
+        return "\n".join(str(c.content) for c in chunks)
+    return str(doc.extracted_text or "")
 
 
 def _parse_response(content: str) -> list[dict]:
