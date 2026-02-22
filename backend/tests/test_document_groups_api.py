@@ -52,7 +52,6 @@ def client(db_session):
 
 @pytest.fixture
 def sample_docs(db_session):
-    docs = []
     for i in range(3):
         doc = Document(
             title=f"規程{i+1}.pdf",
