@@ -77,9 +77,9 @@ def _get_document_content(db: Session, doc: Document, max_chars: int = 8000) -> 
         .all()
     )
     if chunks:
-        content = "\n\n".join(c.content for c in chunks)
+        content = "\n\n".join(str(c.content) for c in chunks)
     else:
-        content = doc.extracted_text or ""
+        content: str = str(doc.extracted_text or "")
     return content[:max_chars]
 
 

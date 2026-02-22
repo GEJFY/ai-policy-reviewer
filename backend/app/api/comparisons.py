@@ -165,7 +165,7 @@ async def generate_checklist(project_id: int, db: Session = Depends(get_db)):
         )
         db.add(ci)
 
-    project.status = "checklist_ready"
+    project.status = "checklist_ready"  # type: ignore[assignment]
     db.commit()
 
     return {"message": f"{len(items)} checklist items generated", "count": len(items)}
@@ -220,7 +220,7 @@ async def set_subsidiary(
     if not sub_doc:
         raise HTTPException(status_code=404, detail="Subsidiary document not found")
 
-    project.subsidiary_document_id = request.subsidiary_document_id
+    project.subsidiary_document_id = request.subsidiary_document_id  # type: ignore[assignment]
     db.commit()
 
     return {"message": "Subsidiary document set"}
@@ -257,8 +257,10 @@ async def run_comparison(project_id: int, db: Session = Depends(get_db)):
     subsidiary_doc = (
         db.query(Document).filter(Document.id == project.subsidiary_document_id).first()
     )
+    if not parent_doc or not subsidiary_doc:
+        raise HTTPException(status_code=404, detail="Document not found")
 
-    project.status = "comparing"
+    project.status = "comparing"  # type: ignore[assignment]
     db.commit()
 
     # Clear existing results
@@ -267,11 +269,11 @@ async def run_comparison(project_id: int, db: Session = Depends(get_db)):
     ).delete()
     db.commit()
 
-    results = []
+    results: list[dict[str, str]] = []
     for ci in project.check_items:
         try:
             result = await compare_single_item(
-                db, ci.item_text, parent_doc, subsidiary_doc
+                db, str(ci.item_text), parent_doc, subsidiary_doc
             )
             cr = ComparisonResult(
                 project_id=project_id,
@@ -293,10 +295,10 @@ async def run_comparison(project_id: int, db: Session = Depends(get_db)):
             db.add(cr)
             results.append({"status": "DIFFERENT", "explanation": str(e)})
 
-    project.status = "completed"
+    project.status = "completed"  # type: ignore[assignment]
     db.commit()
 
-    status_counts = {}
+    status_counts: dict[str, int] = {}
     for r in results:
         s = r["status"]
         status_counts[s] = status_counts.get(s, 0) + 1
@@ -336,7 +338,7 @@ async def export_results(project_id: int, db: Session = Depends(get_db)):
         bottom=Side(style="thin"),
     )
 
-    summary_data = [
+    summary_data: list[list[object]] = [
         ["プロジェクト名", project.name],
         ["説明", project.description or ""],
         [
@@ -351,7 +353,8 @@ async def export_results(project_id: int, db: Session = Depends(get_db)):
         ["チェック項目数", len(project.check_items)],
         ["比較結果数", len(project.results)],
     ]
-    for row_idx, (label, value) in enumerate(summary_data, 1):
+    for row_idx, row_data in enumerate(summary_data, 1):
+        label, value = row_data[0], row_data[1]
         cell_label = ws_summary.cell(row=row_idx, column=1, value=label)
         cell_label.font = Font(bold=True)
         cell_label.border = thin_border
@@ -362,9 +365,10 @@ async def export_results(project_id: int, db: Session = Depends(get_db)):
     ws_summary.column_dimensions["B"].width = 50
 
     # Status summary
-    status_counts = {}
+    status_counts: dict[str, int] = {}
     for r in project.results:
-        status_counts[r.status] = status_counts.get(r.status, 0) + 1
+        s = str(r.status)
+        status_counts[s] = status_counts.get(s, 0) + 1
 
     row_start = len(summary_data) + 2
     ws_summary.cell(row=row_start, column=1, value="判定別集計").font = Font(
