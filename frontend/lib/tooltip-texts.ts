@@ -70,6 +70,11 @@ export const TIPS = {
     description: '関連する規程文書をグループ化し、文書間の矛盾や不整合をAIが検出します。例: 就業規則と給与規程、情報セキュリティポリシーと個人情報保護規程など。',
   },
 
+  // === Comparisons ===
+  comparisons: {
+    description: '親会社と子会社の規程を比較し、差異を分析します。AIが親会社規程からチェックリストを自動生成し、子会社規程との整合性を判定します。',
+  },
+
   // === Settings ===
   settings: {
     llmProvider: 'AIレビューに使用するLLMプロバイダーを選択します。Azure/AWS/GCP/ローカル(Ollama)から選択可能です。',

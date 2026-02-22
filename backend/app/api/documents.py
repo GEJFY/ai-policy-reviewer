@@ -129,8 +129,12 @@ async def upload_document(
     """
     # Validate file type
     filename = file.filename or "unknown.pdf"
-    if not filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported")
+    allowed_extensions = (".pdf", ".xlsx", ".xls")
+    if not filename.lower().endswith(allowed_extensions):
+        raise HTTPException(
+            status_code=400,
+            detail="Supported file types: PDF, Excel (.xlsx, .xls)",
+        )
 
     # Ensure upload directory exists
     os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -150,11 +154,15 @@ async def upload_document(
     with open(file_path, "wb") as f:
         f.write(content)
 
+    # Determine file type
+    ext = os.path.splitext(filename)[1].lower()
+    file_type = "excel" if ext in (".xlsx", ".xls") else "pdf"
+
     # Create document record
     document = Document(
         title=filename,
         file_path=file_path,
-        file_type="pdf",
+        file_type=file_type,
         ocr_status="pending",
     )
     db.add(document)
@@ -288,26 +296,44 @@ async def process_document_ocr(document_id: int):
 
     # === Phase 2: テキスト抽出・チャンク・埋め込み生成（DBロックなし） ===
     try:
-        # Extract text - まずPyPDF2でテキスト抽出を試みる
-        extracted_text = ""
-        try:
-            import PyPDF2
+        # Determine file type from extension
+        is_excel = file_path.lower().endswith((".xlsx", ".xls"))
 
-            with open(file_path, "rb") as f:
-                reader = PyPDF2.PdfReader(f)
-                pages = [page.extract_text() or "" for page in reader.pages]
-                extracted_text = "\n\n".join(pages).strip()
-        except Exception as e:
-            logger.warning(
-                f"PyPDF2 text extraction failed: document_id={document_id}, error={e}"
-            )
+        # Extract text
+        extracted_text = ""
+        if is_excel:
+            try:
+                from app.services.excel_parser import extract_text_from_excel
+
+                extracted_text = extract_text_from_excel(file_path)
+                logger.info(
+                    f"Excel text extracted: document_id={document_id}, "
+                    f"chars={len(extracted_text)}"
+                )
+            except Exception as e:
+                logger.error(
+                    f"Excel extraction failed: document_id={document_id}, error={e}"
+                )
+        else:
+            # PDF: まずPyPDF2でテキスト抽出を試みる
+            try:
+                import PyPDF2
+
+                with open(file_path, "rb") as f:
+                    reader = PyPDF2.PdfReader(f)
+                    pages = [page.extract_text() or "" for page in reader.pages]
+                    extracted_text = "\n\n".join(pages).strip()
+            except Exception as e:
+                logger.warning(
+                    f"PyPDF2 text extraction failed: document_id={document_id}, error={e}"
+                )
 
         if len(extracted_text) > 100:
             logger.info(
-                f"Using PyPDF2 for text PDF: document_id={document_id}, "
+                f"Text extracted successfully: document_id={document_id}, "
                 f"chars={len(extracted_text)}"
             )
-        elif ocr_service.is_available():
+        elif not is_excel and ocr_service.is_available():
             logger.info(
                 f"Using {ocr_service.provider_name()} for OCR: "
                 f"document_id={document_id}"
