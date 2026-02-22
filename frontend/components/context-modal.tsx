@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { X, RefreshCw } from 'lucide-react'
 import { findingsAPI, FindingContext } from '@/lib/api'
+import { computeDiff, DiffLine } from '@/lib/diff-utils'
 
 interface ContextModalProps {
   findingId: number
@@ -198,6 +199,11 @@ export function RevisedTextModal({ reviewId, onClose }: RevisedTextModalProps) {
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'revised' | 'diff'>('revised')
 
+  const diffLines = useMemo(() => {
+    if (!data) return []
+    return computeDiff(data.original_text, data.revised_text)
+  }, [data])
+
   useEffect(() => {
     loadRevisedText()
   }, [reviewId])
@@ -293,19 +299,10 @@ export function RevisedTextModal({ reviewId, onClose }: RevisedTextModalProps) {
                 </p>
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-                  <p className="text-xs font-medium text-red-700 mb-2">修正前</p>
-                  <p className="whitespace-pre-wrap text-sm text-red-900 leading-relaxed">
-                    {data.original_text}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-                  <p className="text-xs font-medium text-green-700 mb-2">修正後</p>
-                  <p className="whitespace-pre-wrap text-sm text-green-900 leading-relaxed">
-                    {data.revised_text}
-                  </p>
-                </div>
+              <div className="rounded-lg border bg-gray-50 p-4 font-mono text-sm">
+                {diffLines.map((line, idx) => (
+                  <DiffLineView key={idx} line={line} />
+                ))}
               </div>
             )
           ) : null}
@@ -328,6 +325,35 @@ export function RevisedTextModal({ reviewId, onClose }: RevisedTextModalProps) {
           </Button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function DiffLineView({ line }: { line: DiffLine }) {
+  if (line.type === 'separator') {
+    return (
+      <div className="py-1 text-center text-xs text-gray-400 select-none">
+        ··· 省略 ···
+      </div>
+    )
+  }
+
+  const styles: Record<string, string> = {
+    same: '',
+    removed: 'bg-red-100 text-red-800 line-through',
+    added: 'bg-green-100 text-green-800',
+  }
+
+  const prefix: Record<string, string> = {
+    same: '  ',
+    removed: '- ',
+    added: '+ ',
+  }
+
+  return (
+    <div className={`whitespace-pre-wrap px-2 py-0.5 ${styles[line.type]}`}>
+      <span className="select-none text-gray-400 mr-2">{prefix[line.type]}</span>
+      {line.content}
     </div>
   )
 }

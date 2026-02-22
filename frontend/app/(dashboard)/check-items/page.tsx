@@ -172,8 +172,10 @@ export default function CheckItemsPage() {
                           {item.is_active ? '有効' : '無効'}
                         </button>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 max-w-md truncate">
-                        {item.description}
+                      <td className="px-4 py-3 text-sm text-gray-600 max-w-md" title={item.description}>
+                        <span className="line-clamp-3 whitespace-pre-wrap">
+                          {item.description}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-2">
