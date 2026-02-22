@@ -65,8 +65,9 @@ export default function DocumentsPage() {
     const MAX_SIZE_MB = 50
     const validFiles: File[] = []
     for (const file of Array.from(files)) {
-      if (!file.name.toLowerCase().endsWith('.pdf')) {
-        showToast(`${file.name}: PDFファイルのみアップロード可能です`, 'error')
+      const ext = file.name.toLowerCase()
+      if (!ext.endsWith('.pdf') && !ext.endsWith('.xlsx') && !ext.endsWith('.xls')) {
+        showToast(`${file.name}: PDF/Excelファイルのみアップロード可能です`, 'error')
         continue
       }
       if (file.size > MAX_SIZE_MB * 1024 * 1024) {
@@ -180,7 +181,7 @@ export default function DocumentsPage() {
                   <HelpTooltip text={TIPS.documents.upload} />
                 </div>
                 <p className="text-sm text-gray-500">
-                  PDF形式のファイルをアップロードしてください（複数選択可）
+                  PDF/Excel形式のファイルをアップロードしてください（複数選択可）
                 </p>
               </div>
               <div>
@@ -188,7 +189,7 @@ export default function DocumentsPage() {
                   ref={fileInputRef}
                   id="file-upload"
                   type="file"
-                  accept=".pdf"
+                  accept=".pdf,.xlsx,.xls"
                   multiple
                   onChange={handleUpload}
                   className="hidden"

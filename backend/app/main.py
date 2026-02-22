@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings, validate_and_log_config
 from app.api import (
     auth,
+    comparisons,
     dashboard,
     export,
     health,
@@ -133,6 +134,7 @@ app.include_router(documents.router)
 app.include_router(reviews.router)
 app.include_router(findings.router)
 app.include_router(document_groups.router)
+app.include_router(comparisons.router)
 
 
 @app.get("/")

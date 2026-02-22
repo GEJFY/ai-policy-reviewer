@@ -502,6 +502,97 @@ export const reviewsAPI = {
   },
 }
 
+// Comparisons
+export interface ComparisonProject {
+  id: number
+  name: string
+  description: string | null
+  parent_document_id: number
+  parent_document_title: string
+  subsidiary_document_id: number | null
+  subsidiary_document_title: string | null
+  status: string
+  check_item_count: number
+  result_count: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ComparisonCheckItem {
+  id: number
+  item_text: string
+  category: string | null
+  order_index: number
+}
+
+export interface ComparisonResult {
+  id: number
+  check_item_id: number
+  check_item_text: string
+  status: string
+  parent_text: string | null
+  subsidiary_text: string | null
+  explanation: string | null
+}
+
+export interface ComparisonProjectDetail extends ComparisonProject {
+  check_items: ComparisonCheckItem[]
+  results: ComparisonResult[]
+}
+
+export const comparisonsAPI = {
+  list: () => fetchAPI<ComparisonProject[]>('/api/v1/comparisons'),
+  get: (id: number) => fetchAPI<ComparisonProjectDetail>(`/api/v1/comparisons/${id}`),
+  create: (data: { name: string; description?: string; parent_document_id: number }) =>
+    fetchAPI<ComparisonProjectDetail>('/api/v1/comparisons', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: number) =>
+    fetchAPI<void>(`/api/v1/comparisons/${id}`, { method: 'DELETE' }),
+  generateChecklist: (id: number) =>
+    fetchAPI<{ message: string; count: number }>(`/api/v1/comparisons/${id}/generate-checklist`, {
+      method: 'POST',
+    }),
+  updateChecklist: (id: number, items: { item_text: string; category?: string }[]) =>
+    fetchAPI<{ message: string }>(`/api/v1/comparisons/${id}/checklist`, {
+      method: 'PUT',
+      body: JSON.stringify({ items }),
+    }),
+  setSubsidiary: (id: number, subsidiary_document_id: number) =>
+    fetchAPI<{ message: string }>(`/api/v1/comparisons/${id}/subsidiary`, {
+      method: 'PUT',
+      body: JSON.stringify({ subsidiary_document_id }),
+    }),
+  compare: (id: number) =>
+    fetchAPI<{ message: string; total: number; status_counts: Record<string, number> }>(
+      `/api/v1/comparisons/${id}/compare`,
+      { method: 'POST' }
+    ),
+  exportExcel: async (id: number) => {
+    const response = await fetch(`${API_BASE}/api/v1/comparisons/${id}/export`)
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}))
+      throw new Error(error.detail || 'Export failed')
+    }
+    const blob = await response.blob()
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const disposition = response.headers.get('content-disposition')
+    let filename = `comparison_${id}.xlsx`
+    if (disposition) {
+      const match = disposition.match(/filename\*=UTF-8''(.+)/)
+      if (match) filename = decodeURIComponent(match[1])
+    }
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  },
+}
+
 // Findings
 export const findingsAPI = {
   list: (reviewId: number, params?: { severity?: string; status?: string }) => {

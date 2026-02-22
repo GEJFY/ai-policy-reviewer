@@ -11,6 +11,9 @@ __all__ = [
     "ReviewFinding",
     "DocumentGroup",
     "DocumentGroupMember",
+    "ComparisonProject",
+    "ComparisonCheckItem",
+    "ComparisonResult",
 ]
 
 from app.models.base import Base
@@ -20,3 +23,8 @@ from app.models.writing_rule import WritingRule
 from app.models.document import Document, DocumentChunk
 from app.models.review import Review, ReviewCheckItem, ReviewFinding
 from app.models.document_group import DocumentGroup, DocumentGroupMember
+from app.models.comparison import (
+    ComparisonProject,
+    ComparisonCheckItem,
+    ComparisonResult,
+)
