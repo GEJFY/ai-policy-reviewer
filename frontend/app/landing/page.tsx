@@ -17,6 +17,14 @@ import {
   Users,
   Download,
   AlertTriangle,
+  GitCompareArrows,
+  FileSpreadsheet,
+  FolderSync,
+  FileDown,
+  Layers,
+  Eye,
+  Pencil,
+  Server,
 } from 'lucide-react'
 
 export default function LandingPage() {
@@ -55,6 +63,9 @@ export default function LandingPage() {
             <a href="#workflow" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
               ワークフロー
             </a>
+            <a href="#comparison" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
+              規程比較
+            </a>
             <Link
               href="/"
               className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors"
@@ -67,7 +78,6 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="relative overflow-hidden pt-32 pb-20 md:pt-40 md:pb-32">
-        {/* Background decoration */}
         <div className="absolute inset-0 -z-10">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[600px] w-[600px] rounded-full bg-blue-50 blur-3xl opacity-60" />
           <div className="absolute top-40 right-0 h-[400px] w-[400px] rounded-full bg-indigo-50 blur-3xl opacity-40" />
@@ -90,7 +100,7 @@ export default function LandingPage() {
               <br className="hidden md:block" />
               AIが用語統一・文法・法令準拠を瞬時にチェック。
               <br className="hidden md:block" />
-              レビュー工数を<span className="font-semibold text-gray-900">最大80%</span>削減します。
+              親子会社間の規程比較やExcel入出力にも対応。
             </p>
             <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
               <Link
@@ -109,11 +119,11 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Hero Image / Stats */}
+          {/* Stats */}
           <div className="mt-20 grid grid-cols-2 gap-4 md:grid-cols-4">
             {[
               { value: '80%', label: 'レビュー工数削減', icon: Clock },
-              { value: '300+', label: 'チェック観点', icon: CheckCircle2 },
+              { value: '7+', label: 'チェック観点', icon: CheckCircle2 },
               { value: '99%', label: '用語不統一の検出率', icon: FileSearch },
               { value: '< 3分', label: '100ページの処理時間', icon: Zap },
             ].map((stat) => (
@@ -150,28 +160,35 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="mt-16 grid gap-6 md:grid-cols-3">
+          <div className="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {[
               {
                 icon: AlertTriangle,
                 color: 'red',
                 title: '用語の不統一',
                 description:
-                  '「社員」「従業員」「職員」——同じ意味の用語が文書内で混在。改訂を重ねるたびに統一が崩れ、法的リスクや誤解を招きます。',
+                  '「社員」「従業員」「職員」——同じ意味の用語が文書内で混在。法的リスクや誤解を招きます。',
               },
               {
                 icon: Clock,
                 color: 'yellow',
                 title: 'レビュー工数の増大',
                 description:
-                  '数百ページの規程を人の目でチェック。法務・総務部門の担当者が数日〜数週間を費やし、本来の業務が圧迫されます。',
+                  '数百ページの規程を人の目でチェック。法務・総務が数日〜数週間を費やします。',
               },
               {
                 icon: Users,
                 color: 'blue',
-                title: '属人化するチェック品質',
+                title: '属人化するチェック',
                 description:
-                  'ベテラン社員しか気づけない問題、チェック観点のばらつき。担当者の異動・退職で品質が一気に低下するリスク。',
+                  'ベテランしか気づけない問題。担当者の異動・退職で品質が低下するリスク。',
+              },
+              {
+                icon: GitCompareArrows,
+                color: 'purple',
+                title: '親子間の規程不整合',
+                description:
+                  '親会社と子会社の規程の整合性チェックを手作業で実施。漏れや見落としが発生。',
               },
             ].map((problem) => (
               <div
@@ -184,7 +201,9 @@ export default function LandingPage() {
                       ? 'bg-red-100 text-red-600'
                       : problem.color === 'yellow'
                         ? 'bg-yellow-100 text-yellow-600'
-                        : 'bg-blue-100 text-blue-600'
+                        : problem.color === 'purple'
+                          ? 'bg-purple-100 text-purple-600'
+                          : 'bg-blue-100 text-blue-600'
                   }`}
                 >
                   <problem.icon className="h-6 w-6" />
@@ -214,36 +233,63 @@ export default function LandingPage() {
               {
                 icon: FileSearch,
                 title: 'AIレビューエンジン',
+                isNew: false,
                 description:
                   'Azure OpenAI / AWS Bedrock / GCP Vertex AI など主要LLMに対応。用語統一、文法、法令準拠など多角的に自動チェック。',
               },
               {
-                icon: BookOpen,
-                title: '用語辞書管理',
+                icon: Layers,
+                title: '一括レビュー',
+                isNew: true,
                 description:
-                  '正式用語とエイリアスを辞書登録。「社員→従業員」のような表記ゆれをAIが自動検出し、統一候補を提案します。',
+                  '複数の文書を一度に選択してバッチレビューを実行。大量の規程を効率よく処理できます。',
               },
               {
-                icon: CheckCircle2,
-                title: 'カスタムチェック項目',
+                icon: GitCompareArrows,
+                title: '親子会社規程比較',
+                isNew: true,
                 description:
-                  '企業独自のチェック観点を自由に定義。プロンプトテンプレートで検出精度を細かく調整できます。',
+                  '親会社規程からAIがチェックリストを自動生成。子会社規程との適合・欠落・相違を5段階で判定。',
+              },
+              {
+                icon: FileSpreadsheet,
+                title: 'Excel入出力対応',
+                isNew: true,
+                description:
+                  'Excelファイル(.xlsx/.xls)のアップロードとテキスト抽出に対応。レビュー結果もExcelで出力。',
+              },
+              {
+                icon: Eye,
+                title: 'コンテキスト表示・提案編集',
+                isNew: true,
+                description:
+                  '指摘箇所の前後文脈を表示。AIの修正提案をカスタム編集し、改訂版文書プレビューも可能。',
+              },
+              {
+                icon: FileDown,
+                title: '改訂版DOCXダウンロード',
+                isNew: true,
+                description:
+                  '承認した指摘事項を反映した改訂版文書をWord形式でダウンロード。変更箇所の追跡も容易。',
+              },
+              {
+                icon: BookOpen,
+                title: '用語辞書管理',
+                isNew: false,
+                description:
+                  '正式用語とエイリアスを辞書登録。「社員→従業員」のような表記ゆれをAIが自動検出し統一候補を提案。',
               },
               {
                 icon: Shield,
                 title: '指摘事項ワークフロー',
+                isNew: false,
                 description:
                   'AIの指摘に対して承認・却下・保留のワークフロー。一括承認やフィルタリングで大量の指摘も効率的に処理。',
               },
               {
-                icon: Download,
-                title: 'Excelレポート出力',
-                description:
-                  'レビュー結果をExcelファイルとしてエクスポート。概要シートと指摘事項一覧シートで報告資料をそのまま作成。',
-              },
-              {
                 icon: BarChart3,
                 title: 'ダッシュボード・統計',
+                isNew: false,
                 description:
                   'レビュー件数、指摘の重要度分布、対応状況をリアルタイムで可視化。品質改善の傾向を一目で把握。',
               },
@@ -252,8 +298,15 @@ export default function LandingPage() {
                 key={feature.title}
                 className="group rounded-2xl border border-gray-100 bg-white p-8 shadow-sm transition-all hover:border-blue-200 hover:shadow-md"
               >
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition-colors group-hover:bg-blue-100">
-                  <feature.icon className="h-6 w-6" />
+                <div className="flex items-center gap-3">
+                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600 transition-colors group-hover:bg-blue-100">
+                    <feature.icon className="h-6 w-6" />
+                  </div>
+                  {feature.isNew && (
+                    <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-700">
+                      NEW
+                    </span>
+                  )}
                 </div>
                 <h3 className="mt-5 text-lg font-bold">{feature.title}</h3>
                 <p className="mt-3 text-gray-600 leading-relaxed">{feature.description}</p>
@@ -268,35 +321,42 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-              3ステップで完了
+              4ステップで完了
             </h2>
             <p className="mt-4 text-lg text-gray-400">
-              PDFをアップロードするだけ。あとはAIにお任せ。
+              PDF/Excelをアップロードするだけ。あとはAIにお任せ。
             </p>
           </div>
 
-          <div className="mt-16 grid gap-8 md:grid-cols-3">
+          <div className="mt-16 grid gap-8 md:grid-cols-4">
             {[
               {
                 step: '01',
                 icon: FileText,
                 title: '文書をアップロード',
                 description:
-                  'PDF形式の規程文書をドラッグ＆ドロップ。OCRで自動テキスト抽出され、50MBまでの大型文書にも対応。',
+                  'PDF・Excelの規程文書をアップロード。OCRで自動テキスト抽出。50MBまで対応。',
               },
               {
                 step: '02',
                 icon: Sparkles,
                 title: 'AIがレビュー実行',
                 description:
-                  '登録済みのチェック項目と用語辞書をもとに、AIが文書全体を網羅的にレビュー。進捗はリアルタイムで確認可能。',
+                  'チェック項目と用語辞書をもとに、AIが文書全体を網羅的にレビュー。一括レビューも可能。',
               },
               {
                 step: '03',
-                icon: CheckCircle2,
-                title: '指摘を確認・対応',
+                icon: Pencil,
+                title: '指摘を確認・編集',
                 description:
-                  '検出された指摘事項を確認し、承認・却下・保留を選択。Excelレポートで関係者への共有もワンクリック。',
+                  '指摘事項の文脈を確認し、AI提案をカスタム編集。承認・却下・保留を選択。',
+              },
+              {
+                step: '04',
+                icon: Download,
+                title: 'レポート・改訂版出力',
+                description:
+                  'Excel形式のレビューレポートと改訂版Word文書をダウンロード。報告・共有もスムーズ。',
               },
             ].map((item) => (
               <div key={item.step} className="relative">
@@ -314,8 +374,128 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Supported Regulations */}
+      {/* Comparison Feature Highlight */}
+      <section id="comparison" className="py-20 md:py-28 bg-gradient-to-br from-indigo-50 to-blue-50">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="grid gap-12 md:grid-cols-2 items-center">
+            <div>
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-indigo-100 px-4 py-1.5 text-sm font-medium text-indigo-700">
+                <GitCompareArrows className="h-4 w-4" />
+                NEW: 親子会社規程比較
+              </div>
+              <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
+                親会社・子会社の
+                <br />
+                規程差異を自動検出
+              </h2>
+              <p className="mt-4 text-lg text-gray-600 leading-relaxed">
+                AIが親会社規程からチェックリストを自動生成し、
+                子会社規程との整合性を5段階で判定。
+                適合・より厳格・緩い・欠落・異なるの分類で、
+                対応が必要な箇所を一目で把握できます。
+              </p>
+              <div className="mt-8 space-y-3">
+                {[
+                  'チェックリスト自動生成（AIが親会社規程を分析）',
+                  'ステップウィザード形式で簡単操作',
+                  '5段階の判定結果（色分け表示）',
+                  '比較結果のExcelエクスポート',
+                ].map((item) => (
+                  <div key={item} className="flex items-center gap-3 text-sm text-gray-700">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-lg">
+              <div className="space-y-3">
+                {[
+                  { status: '適合', color: 'bg-green-100 text-green-800', width: 'w-full' },
+                  { status: 'より厳格', color: 'bg-blue-100 text-blue-800', width: 'w-4/5' },
+                  { status: '緩い', color: 'bg-orange-100 text-orange-800', width: 'w-3/5' },
+                  { status: '欠落', color: 'bg-red-100 text-red-800', width: 'w-2/5' },
+                  { status: '異なる', color: 'bg-yellow-100 text-yellow-800', width: 'w-1/5' },
+                ].map((item) => (
+                  <div key={item.status} className="flex items-center gap-3">
+                    <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${item.color}`}>
+                      {item.status}
+                    </span>
+                    <div className="flex-1 h-3 rounded-full bg-gray-100 overflow-hidden">
+                      <div className={`h-full rounded-full ${item.color.split(' ')[0]} ${item.width} transition-all`} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 grid grid-cols-2 gap-4 text-center">
+                <div className="rounded-xl bg-gray-50 p-4">
+                  <div className="text-2xl font-bold text-gray-900">25</div>
+                  <div className="text-xs text-gray-500">チェック項目</div>
+                </div>
+                <div className="rounded-xl bg-gray-50 p-4">
+                  <div className="text-2xl font-bold text-green-600">72%</div>
+                  <div className="text-xs text-gray-500">適合率</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Tech Stack / Enterprise */}
       <section className="py-20 md:py-28">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
+              エンタープライズ対応
+            </h2>
+            <p className="mt-4 text-lg text-gray-600">
+              セキュリティと運用性を重視した設計
+            </p>
+          </div>
+
+          <div className="mt-16 grid gap-6 md:grid-cols-3">
+            {[
+              {
+                icon: Server,
+                title: 'マルチクラウドLLM',
+                items: ['Azure OpenAI', 'AWS Bedrock', 'GCP Vertex AI', 'Ollama（ローカル）'],
+              },
+              {
+                icon: Shield,
+                title: 'セキュリティ',
+                items: ['JWT認証', 'レート制限', 'セキュリティヘッダー', '監査ログ'],
+              },
+              {
+                icon: BarChart3,
+                title: '運用・監視',
+                items: ['Prometheusメトリクス', 'サーキットブレーカー', '構造化ログ', 'ヘルスチェック'],
+              },
+            ].map((section) => (
+              <div
+                key={section.title}
+                className="rounded-2xl border border-gray-100 bg-white p-8 shadow-sm"
+              >
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-gray-600">
+                  <section.icon className="h-6 w-6" />
+                </div>
+                <h3 className="mt-5 text-lg font-bold">{section.title}</h3>
+                <ul className="mt-4 space-y-2">
+                  {section.items.map((item) => (
+                    <li key={item} className="flex items-center gap-2 text-sm text-gray-600">
+                      <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Supported Regulations */}
+      <section className="bg-gray-50 py-20 md:py-28">
         <div className="mx-auto max-w-7xl px-6">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
@@ -346,11 +526,17 @@ export default function LandingPage() {
             ].map((doc) => (
               <span
                 key={doc}
-                className="rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700"
+                className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700"
               >
                 {doc}
               </span>
             ))}
+          </div>
+
+          <div className="mt-8 text-center">
+            <p className="text-sm text-gray-500">
+              PDF / Excel (.xlsx, .xls) 形式に対応
+            </p>
           </div>
         </div>
       </section>
@@ -364,13 +550,20 @@ export default function LandingPage() {
           <p className="mt-4 text-lg text-blue-100">
             セットアップ不要。ブラウザからすぐに利用開始できます。
           </p>
-          <div className="mt-10">
+          <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Link
               href="/"
               className="group inline-flex items-center gap-2 rounded-xl bg-white px-10 py-4 text-lg font-bold text-blue-600 shadow-xl transition-all hover:bg-gray-50 hover:shadow-2xl"
             >
               ダッシュボードを開く
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+            </Link>
+            <Link
+              href="/comparisons"
+              className="group inline-flex items-center gap-2 rounded-xl border-2 border-white/30 px-8 py-4 text-lg font-bold text-white transition-all hover:bg-white/10"
+            >
+              規程比較を試す
+              <GitCompareArrows className="h-5 w-5" />
             </Link>
           </div>
         </div>
