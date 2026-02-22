@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useIntersectionObserver } from '@/lib/use-intersection-observer'
 import {
   FileSearch,
   Shield,
@@ -26,6 +27,18 @@ import {
   Pencil,
   Server,
 } from 'lucide-react'
+
+function AnimatedSection({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  const [ref, isVisible] = useIntersectionObserver()
+  return (
+    <div
+      ref={ref}
+      className={`animate-on-scroll ${isVisible ? 'visible' : ''} ${className}`}
+    >
+      {children}
+    </div>
+  )
+}
 
 export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0)
@@ -151,14 +164,16 @@ export default function LandingPage() {
       {/* Problems Section */}
       <section id="problems" className="bg-gray-50 py-20 md:py-28">
         <div className="mx-auto max-w-7xl px-6">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-              こんな課題、ありませんか？
-            </h2>
-            <p className="mt-4 text-lg text-gray-600">
-              規程文書のレビューは、多くの企業にとって大きな負担です
-            </p>
-          </div>
+          <AnimatedSection>
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
+                こんな課題、ありませんか？
+              </h2>
+              <p className="mt-4 text-lg text-gray-600">
+                規程文書のレビューは、多くの企業にとって大きな負担です
+              </p>
+            </div>
+          </AnimatedSection>
 
           <div className="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {[
@@ -219,14 +234,16 @@ export default function LandingPage() {
       {/* Features Section */}
       <section id="features" className="py-20 md:py-28">
         <div className="mx-auto max-w-7xl px-6">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-              PolicyReview AI の機能
-            </h2>
-            <p className="mt-4 text-lg text-gray-600">
-              AIの力で、規程文書のレビューを根本から変えます
-            </p>
-          </div>
+          <AnimatedSection>
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
+                PolicyReview AI の機能
+              </h2>
+              <p className="mt-4 text-lg text-gray-600">
+                AIの力で、規程文書のレビューを根本から変えます
+              </p>
+            </div>
+          </AnimatedSection>
 
           <div className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {[
@@ -319,14 +336,16 @@ export default function LandingPage() {
       {/* Workflow Section */}
       <section id="workflow" className="bg-gray-900 py-20 md:py-28 text-white">
         <div className="mx-auto max-w-7xl px-6">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-              4ステップで完了
-            </h2>
-            <p className="mt-4 text-lg text-gray-400">
-              PDF/Excelをアップロードするだけ。あとはAIにお任せ。
-            </p>
-          </div>
+          <AnimatedSection>
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
+                4ステップで完了
+              </h2>
+              <p className="mt-4 text-lg text-gray-400">
+                PDF/Excelをアップロードするだけ。あとはAIにお任せ。
+              </p>
+            </div>
+          </AnimatedSection>
 
           <div className="mt-16 grid gap-8 md:grid-cols-4">
             {[
@@ -377,6 +396,7 @@ export default function LandingPage() {
       {/* Comparison Feature Highlight */}
       <section id="comparison" className="py-20 md:py-28 bg-gradient-to-br from-indigo-50 to-blue-50">
         <div className="mx-auto max-w-7xl px-6">
+          <AnimatedSection>
           <div className="grid gap-12 md:grid-cols-2 items-center">
             <div>
               <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-indigo-100 px-4 py-1.5 text-sm font-medium text-indigo-700">
@@ -439,6 +459,7 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+          </AnimatedSection>
         </div>
       </section>
 
