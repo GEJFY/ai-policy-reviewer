@@ -26,6 +26,7 @@ from app.api import (
     documents,
     reviews,
     findings,
+    document_groups,
 )
 from app.db.init_db import create_tables
 from app.core.logging_config import init_logging, get_logger
@@ -131,6 +132,7 @@ app.include_router(writing_rules.router)
 app.include_router(documents.router)
 app.include_router(reviews.router)
 app.include_router(findings.router)
+app.include_router(document_groups.router)
 
 
 @app.get("/")

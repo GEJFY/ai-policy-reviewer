@@ -11,12 +11,14 @@ import {
   ListChecks,
   Settings,
   FileSearch,
+  FolderSync,
 } from 'lucide-react'
 
 const navigation = [
   { name: 'ダッシュボード', href: '/', icon: Home },
   { name: '文書管理', href: '/documents', icon: FileText },
   { name: 'レビュー', href: '/reviews', icon: FileSearch },
+  { name: '規程グループ', href: '/document-groups', icon: FolderSync },
   { name: '用語辞書', href: '/terms', icon: BookOpen },
   { name: 'チェック項目', href: '/check-items', icon: CheckSquare },
   { name: '記載ルール', href: '/writing-rules', icon: ListChecks },

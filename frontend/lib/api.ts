@@ -542,3 +542,77 @@ export const findingsAPI = {
   getRevisedText: (reviewId: number) =>
     fetchAPI<RevisedText>(`/api/v1/reviews/${reviewId}/revised-text`),
 }
+
+// Document Groups
+export interface DocumentGroup {
+  id: number
+  name: string
+  description: string | null
+  member_count: number
+  created_at: string
+  updated_at: string | null
+}
+
+export interface DocumentGroupMember {
+  document_id: number
+  document_title: string
+  added_at: string
+}
+
+export interface DocumentGroupDetail extends DocumentGroup {
+  members: DocumentGroupMember[]
+}
+
+export interface ConsistencyFinding {
+  document_a_title: string
+  document_b_title: string
+  location_a: string | null
+  location_b: string | null
+  text_a: string | null
+  text_b: string | null
+  issue_type: string
+  severity: string
+  description: string
+  suggestion: string | null
+}
+
+export interface ConsistencyCheckResult {
+  group_id: number
+  group_name: string
+  total_findings: number
+  high_count: number
+  medium_count: number
+  low_count: number
+  findings: ConsistencyFinding[]
+}
+
+export const documentGroupsAPI = {
+  list: () => fetchAPI<DocumentGroup[]>('/api/v1/document-groups'),
+  create: (name: string, description?: string, document_ids?: number[]) =>
+    fetchAPI<DocumentGroupDetail>('/api/v1/document-groups', {
+      method: 'POST',
+      body: JSON.stringify({ name, description, document_ids: document_ids || [] }),
+    }),
+  get: (id: number) => fetchAPI<DocumentGroupDetail>(`/api/v1/document-groups/${id}`),
+  update: (id: number, data: { name?: string; description?: string }) =>
+    fetchAPI<DocumentGroup>(`/api/v1/document-groups/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: number) =>
+    fetchAPI<void>(`/api/v1/document-groups/${id}`, { method: 'DELETE' }),
+  addMember: (groupId: number, documentId: number) =>
+    fetchAPI<{ message: string }>(
+      `/api/v1/document-groups/${groupId}/members?document_id=${documentId}`,
+      { method: 'POST' }
+    ),
+  removeMember: (groupId: number, documentId: number) =>
+    fetchAPI<void>(`/api/v1/document-groups/${groupId}/members/${documentId}`, {
+      method: 'DELETE',
+    }),
+  runConsistencyCheck: (groupId: number) =>
+    fetchAPI<ConsistencyCheckResult>(
+      `/api/v1/document-groups/${groupId}/consistency-check`,
+      { method: 'POST' }
+    ),
+}
