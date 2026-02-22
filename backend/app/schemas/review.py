@@ -53,3 +53,25 @@ class ReviewDetailResponse(ReviewResponse):
     high_count: int = 0
     medium_count: int = 0
     low_count: int = 0
+
+
+class BatchReviewCreate(BaseModel):
+    """Schema for creating batch reviews (multiple documents)."""
+
+    document_ids: list[int] = Field(
+        ..., min_length=1, description="レビュー対象文書ID配列"
+    )
+    check_item_ids: list[int] = Field(
+        ..., min_length=1, description="適用するチェック項目ID配列"
+    )
+
+
+class BatchReviewResponse(BaseModel):
+    """Schema for batch review creation response."""
+
+    created_reviews: list[ReviewResponse] = Field(
+        description="作成されたレビューのリスト"
+    )
+    failed_document_ids: list[int] = Field(
+        default_factory=list, description="作成に失敗した文書ID"
+    )

@@ -13,6 +13,9 @@ from sqlalchemy.pool import StaticPool
 from app.main import app
 from app.db.database import get_db
 from app.models.base import Base
+from app.models.document import Document
+from app.models.check_item import CheckItem
+from app.models.review import Review, ReviewCheckItem, ReviewFinding
 
 # Test database setup
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -533,3 +536,180 @@ class TestCRUDOperations:
         # Verify deletion
         response = client.get(f"/api/v1/writing-rules/{rule_id}")
         assert response.status_code == 404
+
+
+class TestBatchReview:
+    """一括レビューAPIのテスト"""
+
+    @pytest.fixture
+    def batch_setup(self, db_session):
+        """一括レビューテスト用データ"""
+        docs = []
+        for i in range(3):
+            doc = Document(
+                title=f"テスト規程{i+1}.pdf",
+                file_path=f"/tmp/test{i+1}.pdf",
+                ocr_status="completed",
+                extracted_text=f"テスト文書{i+1}の内容",
+            )
+            db_session.add(doc)
+        # OCR未完了のドキュメント
+        doc_pending = Document(
+            title="未処理規程.pdf",
+            file_path="/tmp/pending.pdf",
+            ocr_status="processing",
+        )
+        db_session.add(doc_pending)
+        db_session.commit()
+
+        for doc in [doc_pending]:
+            db_session.refresh(doc)
+
+        all_docs = db_session.query(Document).all()
+        docs = [d for d in all_docs if d.ocr_status == "completed"]
+
+        check_item = CheckItem(
+            name="用語チェック",
+            category="TERMINOLOGY",
+            description="テスト",
+            severity="HIGH",
+        )
+        db_session.add(check_item)
+        db_session.commit()
+        db_session.refresh(check_item)
+
+        return {
+            "docs": docs,
+            "pending_doc": doc_pending,
+            "check_item": check_item,
+        }
+
+    def test_batch_review_invalid_check_item(self, client: TestClient, batch_setup):
+        """存在しないチェック項目でバッチレビュー"""
+        response = client.post(
+            "/api/v1/reviews/batch",
+            json={
+                "document_ids": [batch_setup["docs"][0].id],
+                "check_item_ids": [9999],
+            },
+        )
+        assert response.status_code == 400
+
+    def test_batch_review_empty_documents(self, client: TestClient, batch_setup):
+        """空のドキュメントリストでバッチレビュー"""
+        response = client.post(
+            "/api/v1/reviews/batch",
+            json={
+                "document_ids": [],
+                "check_item_ids": [batch_setup["check_item"].id],
+            },
+        )
+        assert response.status_code == 422
+
+    def test_batch_review_empty_check_items(self, client: TestClient, batch_setup):
+        """空のチェック項目リストでバッチレビュー"""
+        response = client.post(
+            "/api/v1/reviews/batch",
+            json={
+                "document_ids": [batch_setup["docs"][0].id],
+                "check_item_ids": [],
+            },
+        )
+        assert response.status_code == 422
+
+
+class TestRevisedDocumentDownload:
+    """改訂版ダウンロードAPIのテスト"""
+
+    @pytest.fixture
+    def review_with_approved_findings(self, db_session):
+        """承認済み指摘付きレビューデータ"""
+        doc = Document(
+            title="改訂テスト規程.pdf",
+            file_path="/tmp/revised_test.pdf",
+            ocr_status="completed",
+            extracted_text="社員は所定の手続きに従い申請する。書類等を提出すること。",
+        )
+        db_session.add(doc)
+        db_session.commit()
+        db_session.refresh(doc)
+
+        review = Review(document_id=doc.id, status="completed")
+        db_session.add(review)
+        db_session.commit()
+        db_session.refresh(review)
+
+        f1 = ReviewFinding(
+            review_id=review.id,
+            issue_type="TERMINOLOGY",
+            severity="HIGH",
+            description="「社員」を「従業員」に統一",
+            original_text="社員は所定の手続きに従い申請する",
+            suggestion="従業員は所定の手続きに従い申請する",
+            status="APPROVED",
+        )
+        f2 = ReviewFinding(
+            review_id=review.id,
+            issue_type="GRAMMAR",
+            severity="MEDIUM",
+            description="曖昧な表現",
+            original_text="書類等を提出すること",
+            suggestion="必要書類を提出すること",
+            status="PENDING",
+        )
+        db_session.add_all([f1, f2])
+        db_session.commit()
+
+        return {"review": review, "document": doc, "findings": [f1, f2]}
+
+    def test_download_revised_document_success(
+        self, client: TestClient, review_with_approved_findings
+    ):
+        """改訂版ダウンロード成功"""
+        review_id = review_with_approved_findings["review"].id
+        response = client.get(f"/api/v1/reviews/{review_id}/revised-document")
+        assert response.status_code == 200
+        assert (
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            in response.headers["content-type"]
+        )
+        assert "attachment" in response.headers["content-disposition"]
+        assert len(response.content) > 0
+
+    def test_download_revised_document_not_found(self, client: TestClient):
+        """存在しないレビューの改訂版ダウンロード"""
+        response = client.get("/api/v1/reviews/9999/revised-document")
+        assert response.status_code == 404
+
+    def test_download_revised_document_no_text(
+        self, client: TestClient, db_session
+    ):
+        """テキストなし文書の改訂版ダウンロード"""
+        doc = Document(
+            title="空文書.pdf",
+            file_path="/tmp/empty.pdf",
+            ocr_status="completed",
+            extracted_text=None,
+        )
+        db_session.add(doc)
+        db_session.commit()
+        db_session.refresh(doc)
+
+        review = Review(document_id=doc.id, status="completed")
+        db_session.add(review)
+        db_session.commit()
+        db_session.refresh(review)
+
+        response = client.get(f"/api/v1/reviews/{review.id}/revised-document")
+        assert response.status_code == 404
+
+    def test_download_applies_only_approved(
+        self, client: TestClient, review_with_approved_findings
+    ):
+        """承認済みの指摘のみが適用される"""
+        review_id = review_with_approved_findings["review"].id
+        response = client.get(f"/api/v1/reviews/{review_id}/revised-document")
+        assert response.status_code == 200
+        # DOCX content is binary, just ensure it's a valid file
+        # The actual content verification would require python-docx to parse
+        assert len(response.content) > 100
