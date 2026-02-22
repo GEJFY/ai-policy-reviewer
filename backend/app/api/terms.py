@@ -1,7 +1,8 @@
 """API endpoints for Term management."""
 
 import json
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import Optional
 
@@ -16,6 +17,13 @@ from app.schemas.term import (
 )
 from app.services.embedding_service import embedding_service
 from app.services.vector_store import vector_store
+from app.services.csv_import_service import (
+    read_import_file,
+    validate_required_columns,
+    generate_csv_template,
+    TERM_HEADERS,
+    TERM_SAMPLE,
+)
 
 router = APIRouter(prefix="/api/v1/terms", tags=["Terms"])
 
@@ -242,3 +250,66 @@ async def bulk_create_terms(request: TermBulkCreate, db: Session = Depends(get_d
             term.aliases = json.loads(term.aliases)
 
     return created_terms
+
+
+@router.get("/template")
+async def download_term_template():
+    """Download CSV template for term import."""
+    content = generate_csv_template(TERM_HEADERS, TERM_SAMPLE)
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": "attachment; filename=terms_template.csv"},
+    )
+
+
+@router.post("/import")
+async def import_terms(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """Import terms from CSV or Excel file."""
+    filename = file.filename or "import.csv"
+    file_bytes = await file.read()
+
+    rows, errors = read_import_file(file_bytes, filename)
+    if errors:
+        return {"success": 0, "errors": errors}
+
+    col_errors = validate_required_columns(rows, ["term", "definition", "category"])
+    if col_errors:
+        return {"success": 0, "errors": col_errors}
+
+    success = 0
+    row_errors: list[str] = []
+
+    for i, row in enumerate(rows, start=2):
+        term_name = row.get("term", "").strip()
+        if not term_name:
+            row_errors.append(f"行{i}: termが空です")
+            continue
+
+        # Skip duplicates
+        existing = db.query(Term).filter(Term.term == term_name).first()
+        if existing:
+            row_errors.append(f"行{i}: '{term_name}' は既に登録されています")
+            continue
+
+        aliases = row.get("aliases", "")
+        if aliases and not aliases.startswith("["):
+            aliases = json.dumps(aliases.split(","))
+
+        db_term = Term(
+            term=term_name,
+            aliases=aliases or None,
+            definition=row.get("definition", ""),
+            category=row.get("category", "一般"),
+            usage_note=row.get("usage_note", "") or None,
+        )
+        db.add(db_term)
+        success += 1
+
+    if success > 0:
+        db.commit()
+
+    return {"success": success, "errors": row_errors}

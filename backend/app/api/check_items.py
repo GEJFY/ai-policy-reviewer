@@ -1,6 +1,7 @@
 """API endpoints for CheckItem management."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from typing import Optional
 
@@ -11,6 +12,13 @@ from app.schemas.check_item import (
     CheckItemUpdate,
     CheckItemResponse,
     CheckCategory,
+)
+from app.services.csv_import_service import (
+    read_import_file,
+    validate_required_columns,
+    generate_csv_template,
+    CHECK_ITEM_HEADERS,
+    CHECK_ITEM_SAMPLE,
 )
 
 router = APIRouter(prefix="/api/v1/check-items", tags=["Check Items"])
@@ -122,3 +130,62 @@ def _get_category_label(category: CheckCategory) -> str:
         CheckCategory.OPERATIONAL: "実務適合性",
     }
     return labels.get(category, category.value)
+
+
+@router.get("/template")
+async def download_check_item_template():
+    """Download CSV template for check item import."""
+    content = generate_csv_template(CHECK_ITEM_HEADERS, CHECK_ITEM_SAMPLE)
+    return Response(
+        content=content,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": "attachment; filename=check_items_template.csv"
+        },
+    )
+
+
+@router.post("/import")
+async def import_check_items(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """Import check items from CSV or Excel file."""
+    filename = file.filename or "import.csv"
+    file_bytes = await file.read()
+
+    rows, errors = read_import_file(file_bytes, filename)
+    if errors:
+        return {"success": 0, "errors": errors}
+
+    col_errors = validate_required_columns(rows, ["name", "category", "description"])
+    if col_errors:
+        return {"success": 0, "errors": col_errors}
+
+    success = 0
+    row_errors: list[str] = []
+
+    for i, row in enumerate(rows, start=2):
+        name = row.get("name", "").strip()
+        if not name:
+            row_errors.append(f"行{i}: nameが空です")
+            continue
+
+        is_active_str = row.get("is_active", "true").lower()
+        is_active = is_active_str not in ("false", "0", "no")
+
+        db_item = CheckItem(
+            name=name,
+            category=row.get("category", "TERMINOLOGY"),
+            description=row.get("description", ""),
+            severity=row.get("severity", "MEDIUM"),
+            prompt_template=row.get("prompt_template", "") or None,
+            is_active=is_active,
+        )
+        db.add(db_item)
+        success += 1
+
+    if success > 0:
+        db.commit()
+
+    return {"success": success, "errors": row_errors}
