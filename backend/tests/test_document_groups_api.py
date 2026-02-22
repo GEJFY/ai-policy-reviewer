@@ -10,7 +10,6 @@ from app.main import app
 from app.db.database import get_db
 from app.models.base import Base
 from app.models.document import Document
-from app.models.document_group import DocumentGroup, DocumentGroupMember
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 engine = create_engine(
