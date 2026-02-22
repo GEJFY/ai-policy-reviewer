@@ -6,8 +6,6 @@ from sqlalchemy.orm import Session
 
 from app.models.document import Document, DocumentChunk
 from app.services.llm_service import llm_service
-from app.services.embedding_service import embedding_service
-from app.services.vector_store import vector_store
 
 logger = logging.getLogger(__name__)
 
