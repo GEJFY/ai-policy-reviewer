@@ -22,11 +22,15 @@ import {
   ChevronRight,
   Search,
   MessageSquare,
+  Eye,
+  FileText,
+  Pencil,
 } from 'lucide-react'
 import { reviewsAPI, findingsAPI, Review, Finding } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import { HelpTooltip } from '@/components/ui/tooltip'
 import { TIPS } from '@/lib/tooltip-texts'
+import { ContextModal, RevisedTextModal } from '@/components/context-modal'
 
 export default function ReviewDetailPage() {
   const params = useParams()
@@ -51,6 +55,10 @@ export default function ReviewDetailPage() {
   })
   const [commentInputs, setCommentInputs] = useState<Record<number, string>>({})
   const [showCommentFor, setShowCommentFor] = useState<number | null>(null)
+  const [contextFindingId, setContextFindingId] = useState<number | null>(null)
+  const [showRevisedText, setShowRevisedText] = useState(false)
+  const [editingSuggestion, setEditingSuggestion] = useState<Record<number, string>>({})
+  const [showEditFor, setShowEditFor] = useState<number | null>(null)
 
   useEffect(() => {
     loadReview()
@@ -91,9 +99,16 @@ export default function ReviewDetailPage() {
     setActionLoading(findingId)
     const comment = commentInputs[findingId] || undefined
     try {
-      if (action === 'approve') await findingsAPI.approve(findingId, comment)
-      else if (action === 'reject') await findingsAPI.reject(findingId, comment)
-      else await findingsAPI.defer(findingId, comment)
+      if (action === 'approve') {
+        const editedSuggestion = editingSuggestion[findingId]
+        await findingsAPI.approve(findingId, comment, editedSuggestion || undefined)
+        setEditingSuggestion((prev) => { const next = { ...prev }; delete next[findingId]; return next })
+        setShowEditFor(null)
+      } else if (action === 'reject') {
+        await findingsAPI.reject(findingId, comment)
+      } else {
+        await findingsAPI.defer(findingId, comment)
+      }
       setCommentInputs((prev) => { const next = { ...prev }; delete next[findingId]; return next })
       setShowCommentFor(null)
       loadReview()
@@ -176,6 +191,8 @@ export default function ReviewDetailPage() {
   const totalFindings = findings.length
   const handledFindings = findings.filter((f) => f.status !== 'PENDING').length
   const progressPct = totalFindings > 0 ? Math.round((handledFindings / totalFindings) * 100) : 0
+
+  const hasApproved = findings.some((f) => f.status === 'APPROVED')
 
   function getSeverityBorderColor(severity: string): string {
     switch (severity) {
@@ -271,6 +288,16 @@ export default function ReviewDetailPage() {
                 )}
                 {review.status === 'completed' && (
                   <>
+                    {hasApproved && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setShowRevisedText(true)}
+                      >
+                        <FileText className="mr-1 h-4 w-4" aria-hidden="true" />
+                        修正文書プレビュー
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="outline"
@@ -515,6 +542,25 @@ export default function ReviewDetailPage() {
                           onToggleComment={() =>
                             setShowCommentFor((prev) => (prev === finding.id ? null : finding.id))
                           }
+                          onShowContext={() => setContextFindingId(finding.id)}
+                          editingSuggestion={editingSuggestion[finding.id]}
+                          showEdit={showEditFor === finding.id}
+                          onToggleEdit={() => {
+                            if (showEditFor === finding.id) {
+                              setShowEditFor(null)
+                            } else {
+                              setShowEditFor(finding.id)
+                              if (!editingSuggestion[finding.id]) {
+                                setEditingSuggestion((prev) => ({
+                                  ...prev,
+                                  [finding.id]: finding.suggestion || '',
+                                }))
+                              }
+                            }
+                          }}
+                          onEditSuggestionChange={(val) =>
+                            setEditingSuggestion((prev) => ({ ...prev, [finding.id]: val }))
+                          }
                         />
                       ))}
                     </div>
@@ -525,6 +571,22 @@ export default function ReviewDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Context Modal */}
+      {contextFindingId !== null && (
+        <ContextModal
+          findingId={contextFindingId}
+          onClose={() => setContextFindingId(null)}
+        />
+      )}
+
+      {/* Revised Text Modal */}
+      {showRevisedText && (
+        <RevisedTextModal
+          reviewId={reviewId}
+          onClose={() => setShowRevisedText(false)}
+        />
+      )}
     </>
   )
 }
@@ -541,6 +603,11 @@ function FindingCard({
   onCommentChange,
   showComment,
   onToggleComment,
+  onShowContext,
+  editingSuggestion,
+  showEdit,
+  onToggleEdit,
+  onEditSuggestionChange,
 }: {
   finding: Finding
   severityBorderColor: string
@@ -553,6 +620,11 @@ function FindingCard({
   onCommentChange: (val: string) => void
   showComment: boolean
   onToggleComment: () => void
+  onShowContext: () => void
+  editingSuggestion: string | undefined
+  showEdit: boolean
+  onToggleEdit: () => void
+  onEditSuggestionChange: (val: string) => void
 }) {
   return (
     <Card className={`overflow-hidden border-l-4 ${severityBorderColor}`}>
@@ -583,7 +655,20 @@ function FindingCard({
                 </span>
               )}
             </div>
-            {getStatusBadge(finding.status)}
+            <div className="flex items-center gap-2">
+              {finding.original_text && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={onShowContext}
+                  title="前後のコンテキストを表示"
+                >
+                  <Eye className="mr-1 h-4 w-4" aria-hidden="true" />
+                  コンテキスト
+                </Button>
+              )}
+              {getStatusBadge(finding.status)}
+            </div>
           </div>
 
           {/* Original Text */}
@@ -602,12 +687,50 @@ function FindingCard({
             <p className="text-sm">{finding.description}</p>
           </div>
 
-          {/* Suggestion */}
+          {/* Suggestion with edit capability */}
           {finding.suggestion && (
             <div className="mb-3">
-              <p className="text-xs font-medium text-gray-500 mb-1">改善提案</p>
-              <p className="rounded bg-green-50 p-2 text-sm border border-green-100">
-                {finding.suggestion}
+              <p className="text-xs font-medium text-gray-500 mb-1">
+                改善提案
+                {finding.status === 'PENDING' && (
+                  <button
+                    onClick={onToggleEdit}
+                    className="ml-2 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+                    title="提案を編集して承認"
+                  >
+                    <Pencil className="h-3 w-3" />
+                    編集
+                  </button>
+                )}
+              </p>
+              {showEdit ? (
+                <div>
+                  <textarea
+                    value={editingSuggestion ?? finding.suggestion}
+                    onChange={(e) => onEditSuggestionChange(e.target.value)}
+                    rows={3}
+                    className="w-full rounded-md border border-blue-300 bg-blue-50 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                  <p className="mt-1 text-xs text-gray-400">
+                    提案を編集してから承認すると、編集後のテキストが改訂版に反映されます
+                  </p>
+                </div>
+              ) : (
+                <p className="rounded bg-green-50 p-2 text-sm border border-green-100">
+                  {finding.edited_suggestion || finding.suggestion}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Edited suggestion indicator for already approved */}
+          {finding.edited_suggestion && finding.status === 'APPROVED' && (
+            <div className="mb-3">
+              <p className="text-xs font-medium text-blue-600 mb-1">
+                編集済み提案（承認時に適用）
+              </p>
+              <p className="rounded bg-blue-50 p-2 text-sm border border-blue-100">
+                {finding.edited_suggestion}
               </p>
             </div>
           )}
@@ -658,7 +781,10 @@ function FindingCard({
                   ) : (
                     <Check className="mr-1 h-4 w-4" aria-hidden="true" />
                   )}
-                  承認
+                  {editingSuggestion !== undefined &&
+                   editingSuggestion !== finding.suggestion
+                    ? '編集して承認'
+                    : '承認'}
                 </Button>
                 <Button
                   size="sm"

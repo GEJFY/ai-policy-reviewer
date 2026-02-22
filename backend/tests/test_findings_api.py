@@ -68,7 +68,14 @@ def sample_review(db_session):
         title="テスト規程.pdf",
         file_path="/tmp/test.pdf",
         ocr_status="completed",
-        extracted_text="テスト文書の内容",
+        extracted_text=(
+            "第1条　本規程は、従業員の就業に関する事項を定める。\n"
+            "第2条　就業時間は午前9時から午後6時までとする。\n"
+            "第3条　社員は所定の手続きに従い申請する。\n"
+            "第4条　休暇は事前に届出を行うものとする。\n"
+            "第5条　次に掲げる書類等を提出する。\n"
+            "第10条　関連法令に従う。"
+        ),
     )
     db_session.add(doc)
     db_session.commit()
@@ -419,6 +426,138 @@ class TestFindingsSummary:
     def test_summary_review_not_found(self, client: TestClient):
         """存在しないレビューのサマリーで404"""
         response = client.get("/api/v1/reviews/9999/findings/summary")
+        assert response.status_code == 404
+
+
+class TestEditedSuggestion:
+    """edited_suggestion 関連のテスト"""
+
+    def test_approve_with_edited_suggestion(self, client: TestClient, sample_review):
+        """編集済み提案付きで承認"""
+        finding = sample_review["findings"][0]
+        response = client.put(
+            f"/api/v1/findings/{finding.id}/approve",
+            json={
+                "comment": "修正して承認",
+                "edited_suggestion": "「従業員」に統一変更する",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "APPROVED"
+        assert data["edited_suggestion"] == "「従業員」に統一変更する"
+        assert data["comment"] == "修正して承認"
+
+    def test_approve_without_edited_suggestion(self, client: TestClient, sample_review):
+        """edited_suggestionなしで承認（元のsuggestionが維持）"""
+        finding = sample_review["findings"][0]
+        response = client.put(
+            f"/api/v1/findings/{finding.id}/approve",
+            json={"comment": "そのまま承認"},
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "APPROVED"
+        assert data["edited_suggestion"] is None
+
+    def test_reset_clears_edited_suggestion(self, client: TestClient, sample_review):
+        """リセットでedited_suggestionもクリアされる"""
+        finding = sample_review["findings"][0]
+        # 編集付き承認
+        client.put(
+            f"/api/v1/findings/{finding.id}/approve",
+            json={"edited_suggestion": "修正テキスト"},
+        )
+        # リセット
+        response = client.put(f"/api/v1/findings/{finding.id}/reset")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "PENDING"
+        assert data["edited_suggestion"] is None
+
+
+class TestFindingContext:
+    """GET /findings/{finding_id}/context のテスト"""
+
+    def test_get_context_success(self, client: TestClient, sample_review):
+        """コンテキストを正常に取得"""
+        finding = sample_review["findings"][0]
+        response = client.get(f"/api/v1/findings/{finding.id}/context")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["finding_id"] == finding.id
+        assert data["original_text"] == "社員は所定の手続きに従い申請する"
+        # context_text should contain the original text
+        assert "社員は所定の手続きに従い申請する" in data["context_text"]
+        assert data["highlight_start"] >= 0
+        assert data["highlight_end"] > data["highlight_start"]
+
+    def test_get_context_not_found(self, client: TestClient):
+        """存在しないfindingで404"""
+        response = client.get("/api/v1/findings/9999/context")
+        assert response.status_code == 404
+
+    def test_get_context_with_corrected_text(self, client: TestClient, sample_review):
+        """修正プレビューが含まれる"""
+        finding = sample_review["findings"][0]
+        response = client.get(f"/api/v1/findings/{finding.id}/context")
+        assert response.status_code == 200
+        data = response.json()
+        # suggestion is "「従業員」に変更", so corrected_text should contain it
+        if data["corrected_text"]:
+            assert "「従業員」に変更" in data["corrected_text"]
+
+
+class TestRevisedText:
+    """GET /reviews/{review_id}/revised-text のテスト"""
+
+    def test_revised_text_no_approved(self, client: TestClient, sample_review):
+        """承認済みがない場合、元テキストのまま"""
+        review_id = sample_review["review"].id
+        response = client.get(f"/api/v1/reviews/{review_id}/revised-text")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["changes_applied"] == 0
+        assert data["original_text"] == data["revised_text"]
+
+    def test_revised_text_with_approved(self, client: TestClient, sample_review):
+        """承認済み指摘のsuggestionが適用される"""
+        review_id = sample_review["review"].id
+        finding = sample_review["findings"][0]
+
+        # 承認
+        client.put(
+            f"/api/v1/findings/{finding.id}/approve",
+            json={},
+        )
+
+        response = client.get(f"/api/v1/reviews/{review_id}/revised-text")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total_approved"] == 1
+
+    def test_revised_text_with_edited_suggestion(
+        self, client: TestClient, sample_review
+    ):
+        """edited_suggestionが優先的に適用される"""
+        review_id = sample_review["review"].id
+        finding = sample_review["findings"][0]
+
+        # 編集付き承認
+        client.put(
+            f"/api/v1/findings/{finding.id}/approve",
+            json={"edited_suggestion": "カスタム修正テキスト"},
+        )
+
+        response = client.get(f"/api/v1/reviews/{review_id}/revised-text")
+        assert response.status_code == 200
+        data = response.json()
+        if data["changes_applied"] > 0:
+            assert "カスタム修正テキスト" in data["revised_text"]
+
+    def test_revised_text_review_not_found(self, client: TestClient):
+        """存在しないレビューで404"""
+        response = client.get("/api/v1/reviews/9999/revised-text")
         assert response.status_code == 404
 
 

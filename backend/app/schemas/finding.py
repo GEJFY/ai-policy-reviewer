@@ -49,6 +49,7 @@ class FindingResponse(FindingBase):
     reviewed_by: str | None
     reviewed_at: datetime | None
     comment: str | None
+    edited_suggestion: str | None
     created_at: datetime
 
     class Config:
@@ -59,6 +60,9 @@ class FindingApprovalRequest(BaseModel):
     """Schema for approving/rejecting a finding."""
 
     comment: str | None = Field(default=None, description="レビューコメント")
+    edited_suggestion: str | None = Field(
+        default=None, description="ユーザー編集済みの改善提案"
+    )
 
 
 class BulkApprovalRequest(BaseModel):
