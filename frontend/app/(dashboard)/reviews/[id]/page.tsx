@@ -18,6 +18,10 @@ import {
   Pause,
   RefreshCw,
   Download,
+  ChevronDown,
+  ChevronRight,
+  Search,
+  MessageSquare,
 } from 'lucide-react'
 import { reviewsAPI, findingsAPI, Review, Finding } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
@@ -38,16 +42,22 @@ export default function ReviewDetailPage() {
   const [selectedFindings, setSelectedFindings] = useState<number[]>([])
   const [severityFilter, setSeverityFilter] = useState<string>('')
   const [statusFilter, setStatusFilter] = useState<string>('')
+  const [searchQuery, setSearchQuery] = useState('')
   const [exporting, setExporting] = useState(false)
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    HIGH: true,
+    MEDIUM: false,
+    LOW: false,
+  })
+  const [commentInputs, setCommentInputs] = useState<Record<number, string>>({})
+  const [showCommentFor, setShowCommentFor] = useState<number | null>(null)
 
   useEffect(() => {
     loadReview()
   }, [reviewId])
 
   useEffect(() => {
-    // Poll for status updates if pending or processing (with backoff)
     if (review?.status === 'pending' || review?.status === 'processing') {
-      // 最初は3秒、徐々に遅くして最大10秒
       const delay = Math.min(3000 + pollCount * 1000, 10000)
       const timeout = setTimeout(() => {
         loadReview()
@@ -76,43 +86,20 @@ export default function ReviewDetailPage() {
     }
   }
 
-  async function handleApprove(findingId: number) {
+  async function handleAction(findingId: number, action: 'approve' | 'reject' | 'defer') {
     setActionError(null)
     setActionLoading(findingId)
+    const comment = commentInputs[findingId] || undefined
     try {
-      await findingsAPI.approve(findingId)
+      if (action === 'approve') await findingsAPI.approve(findingId, comment)
+      else if (action === 'reject') await findingsAPI.reject(findingId, comment)
+      else await findingsAPI.defer(findingId, comment)
+      setCommentInputs((prev) => { const next = { ...prev }; delete next[findingId]; return next })
+      setShowCommentFor(null)
       loadReview()
     } catch (error) {
-      console.error('Failed to approve finding:', error)
-      setActionError('指摘の承認に失敗しました')
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  async function handleReject(findingId: number) {
-    setActionError(null)
-    setActionLoading(findingId)
-    try {
-      await findingsAPI.reject(findingId)
-      loadReview()
-    } catch (error) {
-      console.error('Failed to reject finding:', error)
-      setActionError('指摘の却下に失敗しました')
-    } finally {
-      setActionLoading(null)
-    }
-  }
-
-  async function handleDefer(findingId: number) {
-    setActionError(null)
-    setActionLoading(findingId)
-    try {
-      await findingsAPI.defer(findingId)
-      loadReview()
-    } catch (error) {
-      console.error('Failed to defer finding:', error)
-      setActionError('指摘の保留に失敗しました')
+      console.error(`Failed to ${action} finding:`, error)
+      setActionError(`指摘の${action === 'approve' ? '承認' : action === 'reject' ? '却下' : '保留'}に失敗しました`)
     } finally {
       setActionLoading(null)
     }
@@ -158,33 +145,60 @@ export default function ReviewDetailPage() {
     }
   }
 
+  function toggleSection(severity: string) {
+    setExpandedSections((prev) => ({ ...prev, [severity]: !prev[severity] }))
+  }
+
+  // Filtering
   const filteredFindings = findings.filter((f) => {
     if (severityFilter && f.severity !== severityFilter) return false
     if (statusFilter && f.status !== statusFilter) return false
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      return (
+        f.description.toLowerCase().includes(q) ||
+        (f.original_text?.toLowerCase().includes(q) ?? false) ||
+        (f.suggestion?.toLowerCase().includes(q) ?? false) ||
+        (f.location?.toLowerCase().includes(q) ?? false)
+      )
+    }
     return true
   })
 
+  // Group by severity
+  const groupedFindings: Record<string, Finding[]> = { HIGH: [], MEDIUM: [], LOW: [] }
+  filteredFindings.forEach((f) => {
+    if (groupedFindings[f.severity]) groupedFindings[f.severity].push(f)
+    else groupedFindings[f.severity] = [f]
+  })
+
+  // Progress stats
+  const totalFindings = findings.length
+  const handledFindings = findings.filter((f) => f.status !== 'PENDING').length
+  const progressPct = totalFindings > 0 ? Math.round((handledFindings / totalFindings) * 100) : 0
+
+  function getSeverityBorderColor(severity: string): string {
+    switch (severity) {
+      case 'HIGH': return 'border-l-red-500'
+      case 'MEDIUM': return 'border-l-yellow-500'
+      default: return 'border-l-blue-400'
+    }
+  }
+
   function getSeverityColor(severity: string): 'destructive' | 'warning' | 'secondary' {
     switch (severity) {
-      case 'HIGH':
-        return 'destructive'
-      case 'MEDIUM':
-        return 'warning'
-      default:
-        return 'secondary'
+      case 'HIGH': return 'destructive'
+      case 'MEDIUM': return 'warning'
+      default: return 'secondary'
     }
   }
 
   function getStatusBadge(status: string) {
     switch (status) {
-      case 'APPROVED':
-        return <Badge variant="success">承認</Badge>
-      case 'REJECTED':
-        return <Badge variant="destructive">却下</Badge>
-      case 'DEFERRED':
-        return <Badge variant="secondary">保留</Badge>
-      default:
-        return <Badge variant="outline">未対応</Badge>
+      case 'APPROVED': return <Badge variant="success">承認</Badge>
+      case 'REJECTED': return <Badge variant="destructive">却下</Badge>
+      case 'DEFERRED': return <Badge variant="secondary">保留</Badge>
+      default: return <Badge variant="outline">未対応</Badge>
     }
   }
 
@@ -277,7 +291,7 @@ export default function ReviewDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               <div>
                 <p className="text-sm text-gray-500">ステータス</p>
                 <div className="flex items-center gap-2 mt-1">
@@ -320,6 +334,24 @@ export default function ReviewDetailPage() {
                 <p className="mt-1 font-medium">{formatDate(review.created_at)}</p>
               </div>
             </div>
+
+            {/* Progress Bar */}
+            {totalFindings > 0 && (
+              <div className="mt-4 pt-4 border-t">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-gray-500">対応進捗</span>
+                  <span className="text-sm font-medium">
+                    {handledFindings} / {totalFindings} 件対応済み ({progressPct}%)
+                  </span>
+                </div>
+                <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-green-500 transition-all duration-500"
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -351,31 +383,66 @@ export default function ReviewDetailPage() {
           </div>
         )}
 
-        {/* Filters */}
-        <div className="mb-4 flex items-center gap-4">
-          <select
-            value={severityFilter}
-            onChange={(e) => setSeverityFilter(e.target.value)}
-            className="rounded-md border border-gray-200 px-3 py-2 text-sm"
-            aria-label="重要度でフィルタ"
-          >
-            <option value="">すべての重要度</option>
-            <option value="HIGH">HIGH</option>
-            <option value="MEDIUM">MEDIUM</option>
-            <option value="LOW">LOW</option>
-          </select>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-md border border-gray-200 px-3 py-2 text-sm"
-            aria-label="ステータスでフィルタ"
-          >
-            <option value="">すべてのステータス</option>
-            <option value="PENDING">未対応</option>
-            <option value="APPROVED">承認</option>
-            <option value="REJECTED">却下</option>
-            <option value="DEFERRED">保留</option>
-          </select>
+        {/* Filters - Pill toggle style */}
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          {/* Severity pills */}
+          <div className="flex gap-1 rounded-lg bg-gray-100 p-1">
+            {[
+              { value: '', label: '全重要度' },
+              { value: 'HIGH', label: 'HIGH' },
+              { value: 'MEDIUM', label: 'MEDIUM' },
+              { value: 'LOW', label: 'LOW' },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setSeverityFilter(opt.value)}
+                className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+                  severityFilter === opt.value
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Status pills */}
+          <div className="flex gap-1 rounded-lg bg-gray-100 p-1">
+            {[
+              { value: '', label: '全ステータス' },
+              { value: 'PENDING', label: '未対応' },
+              { value: 'APPROVED', label: '承認' },
+              { value: 'REJECTED', label: '却下' },
+              { value: 'DEFERRED', label: '保留' },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setStatusFilter(opt.value)}
+                className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+                  statusFilter === opt.value
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Text search */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+            <input
+              type="text"
+              placeholder="テキスト検索..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="rounded-md border border-gray-200 pl-8 pr-3 py-1.5 text-sm w-48"
+              aria-label="指摘内容を検索"
+            />
+          </div>
+
           <button
             onClick={toggleAllFindings}
             className="text-sm text-blue-600 hover:underline"
@@ -385,7 +452,7 @@ export default function ReviewDetailPage() {
           <HelpTooltip text={TIPS.reviews.selectAll} />
         </div>
 
-        {/* Findings List */}
+        {/* Findings - Grouped by Severity */}
         <div className="space-y-4">
           {filteredFindings.length === 0 ? (
             <Card>
@@ -394,119 +461,235 @@ export default function ReviewDetailPage() {
               </CardContent>
             </Card>
           ) : (
-            filteredFindings.map((finding) => (
-              <Card key={finding.id} className="overflow-hidden">
-                <div className="flex">
-                  {/* Checkbox for pending items */}
-                  {finding.status === 'PENDING' && (
-                    <div className="flex items-center border-r bg-gray-50 px-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedFindings.includes(finding.id)}
-                        onChange={() => toggleFinding(finding.id)}
-                        className="h-4 w-4 rounded border-gray-300"
-                      />
+            (['HIGH', 'MEDIUM', 'LOW'] as const).map((severity) => {
+              const group = groupedFindings[severity] || []
+              if (group.length === 0) return null
+              const isExpanded = expandedSections[severity]
+              const severityLabel = { HIGH: '重大', MEDIUM: '中程度', LOW: '軽微' }[severity]
+              const severityBg = {
+                HIGH: 'bg-red-50 border-red-200',
+                MEDIUM: 'bg-yellow-50 border-yellow-200',
+                LOW: 'bg-blue-50 border-blue-200',
+              }[severity]
+
+              return (
+                <div key={severity}>
+                  {/* Section Header */}
+                  <button
+                    onClick={() => toggleSection(severity)}
+                    className={`w-full flex items-center justify-between rounded-lg border p-3 mb-2 ${severityBg}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {isExpanded ? (
+                        <ChevronDown className="h-5 w-5" />
+                      ) : (
+                        <ChevronRight className="h-5 w-5" />
+                      )}
+                      <Badge variant={getSeverityColor(severity)}>{severity}</Badge>
+                      <span className="font-medium">{severityLabel}</span>
+                      <span className="text-sm text-gray-500">{group.length} 件</span>
+                    </div>
+                    <span className="text-sm text-gray-500">
+                      {group.filter((f) => f.status !== 'PENDING').length}/{group.length} 対応済み
+                    </span>
+                  </button>
+
+                  {/* Findings in this group */}
+                  {isExpanded && (
+                    <div className="space-y-3 ml-2">
+                      {group.map((finding) => (
+                        <FindingCard
+                          key={finding.id}
+                          finding={finding}
+                          severityBorderColor={getSeverityBorderColor(finding.severity)}
+                          isSelected={selectedFindings.includes(finding.id)}
+                          onToggleSelect={() => toggleFinding(finding.id)}
+                          actionLoading={actionLoading}
+                          onAction={(action) => handleAction(finding.id, action)}
+                          getStatusBadge={getStatusBadge}
+                          commentInput={commentInputs[finding.id] || ''}
+                          onCommentChange={(val) =>
+                            setCommentInputs((prev) => ({ ...prev, [finding.id]: val }))
+                          }
+                          showComment={showCommentFor === finding.id}
+                          onToggleComment={() =>
+                            setShowCommentFor((prev) => (prev === finding.id ? null : finding.id))
+                          }
+                        />
+                      ))}
                     </div>
                   )}
-
-                  <div className="flex-1 p-4">
-                    {/* Header */}
-                    <div className="mb-3 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={getSeverityColor(finding.severity)}>
-                          {finding.severity}
-                        </Badge>
-                        <Badge variant="outline">{finding.issue_type}</Badge>
-                        {finding.location && (
-                          <span className="text-sm text-gray-500">
-                            {finding.location}
-                          </span>
-                        )}
-                      </div>
-                      {getStatusBadge(finding.status)}
-                    </div>
-
-                    {/* Original Text */}
-                    {finding.original_text && (
-                      <div className="mb-3">
-                        <p className="text-xs font-medium text-gray-500 mb-1">
-                          問題箇所
-                        </p>
-                        <p className="rounded bg-red-50 p-2 text-sm">
-                          {finding.original_text}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Description */}
-                    <div className="mb-3">
-                      <p className="text-xs font-medium text-gray-500 mb-1">
-                        問題内容
-                      </p>
-                      <p className="text-sm">{finding.description}</p>
-                    </div>
-
-                    {/* Suggestion */}
-                    {finding.suggestion && (
-                      <div className="mb-3">
-                        <p className="text-xs font-medium text-gray-500 mb-1">
-                          改善提案
-                        </p>
-                        <p className="rounded bg-green-50 p-2 text-sm">
-                          {finding.suggestion}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Actions */}
-                    {finding.status === 'PENDING' && (
-                      <div className="mt-4 flex gap-2 border-t pt-4">
-                        <Button
-                          size="sm"
-                          onClick={() => handleApprove(finding.id)}
-                          disabled={actionLoading === finding.id}
-                        >
-                          {actionLoading === finding.id ? (
-                            <RefreshCw className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />
-                          ) : (
-                            <Check className="mr-1 h-4 w-4" aria-hidden="true" />
-                          )}
-                          承認
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDefer(finding.id)}
-                          disabled={actionLoading === finding.id}
-                        >
-                          <Pause className="mr-1 h-4 w-4" aria-hidden="true" />
-                          保留
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleReject(finding.id)}
-                          disabled={actionLoading === finding.id}
-                        >
-                          <X className="mr-1 h-4 w-4" aria-hidden="true" />
-                          却下
-                        </Button>
-                      </div>
-                    )}
-
-                    {/* Review Comment */}
-                    {finding.comment && (
-                      <div className="mt-3 text-sm text-gray-500">
-                        <span className="font-medium">コメント:</span> {finding.comment}
-                      </div>
-                    )}
-                  </div>
                 </div>
-              </Card>
-            ))
+              )
+            })
           )}
         </div>
       </div>
     </>
+  )
+}
+
+function FindingCard({
+  finding,
+  severityBorderColor,
+  isSelected,
+  onToggleSelect,
+  actionLoading,
+  onAction,
+  getStatusBadge,
+  commentInput,
+  onCommentChange,
+  showComment,
+  onToggleComment,
+}: {
+  finding: Finding
+  severityBorderColor: string
+  isSelected: boolean
+  onToggleSelect: () => void
+  actionLoading: number | null
+  onAction: (action: 'approve' | 'reject' | 'defer') => void
+  getStatusBadge: (status: string) => React.ReactNode
+  commentInput: string
+  onCommentChange: (val: string) => void
+  showComment: boolean
+  onToggleComment: () => void
+}) {
+  return (
+    <Card className={`overflow-hidden border-l-4 ${severityBorderColor}`}>
+      <div className="flex">
+        {/* Checkbox for pending items */}
+        {finding.status === 'PENDING' && (
+          <div className="flex items-start border-r bg-gray-50 px-3 pt-4">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={onToggleSelect}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+          </div>
+        )}
+
+        <div className="flex-1 p-4">
+          {/* Header */}
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">{finding.issue_type}</Badge>
+              {finding.location && (
+                <span className="text-sm text-gray-500">{finding.location}</span>
+              )}
+              {finding.confidence != null && (
+                <span className="text-xs text-gray-400" title="AI信頼度">
+                  信頼度: {Math.round(finding.confidence * 100)}%
+                </span>
+              )}
+            </div>
+            {getStatusBadge(finding.status)}
+          </div>
+
+          {/* Original Text */}
+          {finding.original_text && (
+            <div className="mb-3">
+              <p className="text-xs font-medium text-gray-500 mb-1">問題箇所</p>
+              <p className="rounded bg-red-50 p-2 text-sm border border-red-100">
+                {finding.original_text}
+              </p>
+            </div>
+          )}
+
+          {/* Description */}
+          <div className="mb-3">
+            <p className="text-xs font-medium text-gray-500 mb-1">問題内容</p>
+            <p className="text-sm">{finding.description}</p>
+          </div>
+
+          {/* Suggestion */}
+          {finding.suggestion && (
+            <div className="mb-3">
+              <p className="text-xs font-medium text-gray-500 mb-1">改善提案</p>
+              <p className="rounded bg-green-50 p-2 text-sm border border-green-100">
+                {finding.suggestion}
+              </p>
+            </div>
+          )}
+
+          {/* Rationale */}
+          {finding.rationale && (
+            <div className="mb-3">
+              <p className="text-xs font-medium text-gray-500 mb-1">
+                指摘根拠 <HelpTooltip text={TIPS.reviews.rationale} />
+              </p>
+              <p className="rounded bg-gray-50 p-2 text-sm text-gray-700 border border-gray-100">
+                {finding.rationale}
+              </p>
+            </div>
+          )}
+
+          {/* Actions */}
+          {finding.status === 'PENDING' && (
+            <div className="mt-4 border-t pt-4">
+              {/* Comment toggle */}
+              <div className="mb-3">
+                <button
+                  onClick={onToggleComment}
+                  className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  {showComment ? 'コメントを閉じる' : 'コメントを追加'}
+                </button>
+                {showComment && (
+                  <textarea
+                    value={commentInput}
+                    onChange={(e) => onCommentChange(e.target.value)}
+                    placeholder="コメントを入力（任意）..."
+                    rows={2}
+                    className="mt-2 w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+                  />
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => onAction('approve')}
+                  disabled={actionLoading === finding.id}
+                >
+                  {actionLoading === finding.id ? (
+                    <RefreshCw className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <Check className="mr-1 h-4 w-4" aria-hidden="true" />
+                  )}
+                  承認
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onAction('defer')}
+                  disabled={actionLoading === finding.id}
+                >
+                  <Pause className="mr-1 h-4 w-4" aria-hidden="true" />
+                  保留
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => onAction('reject')}
+                  disabled={actionLoading === finding.id}
+                >
+                  <X className="mr-1 h-4 w-4" aria-hidden="true" />
+                  却下
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Review Comment */}
+          {finding.comment && (
+            <div className="mt-3 rounded bg-gray-50 p-2 text-sm text-gray-600 border border-gray-100">
+              <span className="font-medium text-gray-700">コメント:</span> {finding.comment}
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
   )
 }
