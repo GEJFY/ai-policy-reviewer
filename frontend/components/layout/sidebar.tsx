@@ -13,6 +13,7 @@ import {
   Settings,
   FileSearch,
   FolderSync,
+  HelpCircle,
 } from 'lucide-react'
 
 const navigation = [
@@ -24,6 +25,7 @@ const navigation = [
   { name: '用語辞書', href: '/terms', icon: BookOpen },
   { name: 'チェック項目', href: '/check-items', icon: CheckSquare },
   { name: '記載ルール', href: '/writing-rules', icon: ListChecks },
+  { name: 'マニュアル', href: '/manual', icon: HelpCircle },
 ]
 
 export function Sidebar() {
