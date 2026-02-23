@@ -127,9 +127,9 @@ async def update_group(
         raise HTTPException(status_code=404, detail="Document group not found")
 
     if request.name is not None:
-        group.name = request.name  # type: ignore[assignment]
+        group.name = request.name
     if request.description is not None:
-        group.description = request.description  # type: ignore[assignment]
+        group.description = request.description
     db.commit()
     db.refresh(group)
 
@@ -279,7 +279,7 @@ async def get_consistency_check_status(
         raise HTTPException(status_code=404, detail="Consistency check job not found")
 
     if job.status == "completed" and job.result_json:
-        raw_findings = json.loads(job.result_json)
+        raw_findings = json.loads(str(job.result_json))
         high = sum(1 for f in raw_findings if f.get("severity") == "HIGH")
         medium = sum(1 for f in raw_findings if f.get("severity") == "MEDIUM")
         low = sum(1 for f in raw_findings if f.get("severity") == "LOW")
@@ -316,7 +316,7 @@ async def get_consistency_check_status(
     # Return progress
     progress = 0.0
     if job.total_pairs and job.total_pairs > 0:
-        progress = (job.completed_pairs or 0) / job.total_pairs * 100
+        progress = float((job.completed_pairs or 0)) / float(job.total_pairs) * 100
 
     error_detail = None
     if job.status == "failed":
@@ -357,7 +357,7 @@ async def execute_consistency_check_task(
                 .first()
             )
             if job:
-                job.completed_pairs = completed  # type: ignore[assignment]
+                job.completed_pairs = completed
                 db.commit()
 
         all_findings = await check_consistency_with_progress(
@@ -372,9 +372,9 @@ async def execute_consistency_check_task(
             .first()
         )
         if job:
-            job.status = "completed"  # type: ignore[assignment]
-            job.result_json = json.dumps(all_findings, ensure_ascii=False)  # type: ignore[assignment]
-            job.completed_at = datetime.now(timezone.utc)  # type: ignore[assignment]
+            job.status = "completed"
+            job.result_json = json.dumps(all_findings, ensure_ascii=False)
+            job.completed_at = datetime.now(timezone.utc)
             db.commit()
 
         logger.info(
@@ -391,8 +391,8 @@ async def execute_consistency_check_task(
             .first()
         )
         if job:
-            job.status = "failed"  # type: ignore[assignment]
-            job.error_message = str(e)  # type: ignore[assignment]
+            job.status = "failed"
+            job.error_message = str(e)
             db.commit()
     finally:
         db.close()
