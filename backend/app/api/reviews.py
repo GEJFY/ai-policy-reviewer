@@ -491,10 +491,14 @@ async def create_batch_review(
             db.add(review_check)
         db.commit()
 
-        background_tasks.add_task(
-            execute_review_task, review.id, request.check_item_ids
-        )
         created_reviews.append(review)
+
+    # Schedule all reviews as a single batch task for parallel execution
+    review_ids = [r.id for r in created_reviews]
+    if review_ids:
+        background_tasks.add_task(
+            execute_batch_review_task, review_ids, request.check_item_ids
+        )
 
     return BatchReviewResponse(
         created_reviews=created_reviews,
@@ -791,3 +795,29 @@ async def execute_review_task(review_id: int, check_item_ids: list[int]):
             db.commit()
     finally:
         db.close()
+
+
+async def execute_batch_review_task(review_ids: list[int], check_item_ids: list[int]):
+    """
+    バッチレビューを並列実行するタスク関数。
+
+    複数のレビューをasyncio.gatherで並列実行し、
+    Semaphoreで同時実行数を制限する。
+    """
+    import asyncio
+
+    MAX_CONCURRENT_REVIEWS = 2
+    semaphore = asyncio.Semaphore(MAX_CONCURRENT_REVIEWS)
+
+    logger.info(
+        f"Starting batch review task: reviews={review_ids}, "
+        f"check_items={check_item_ids}, max_concurrent={MAX_CONCURRENT_REVIEWS}"
+    )
+
+    async def run_one(review_id: int):
+        async with semaphore:
+            await execute_review_task(review_id, check_item_ids)
+
+    await asyncio.gather(*[run_one(rid) for rid in review_ids], return_exceptions=True)
+
+    logger.info(f"Batch review task completed: reviews={review_ids}")
