@@ -7,13 +7,16 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.db.database import get_db
-from app.models.term import Term
+from app.models.term import Term, TermCandidate
 from app.schemas.term import (
     TermCreate,
     TermUpdate,
     TermResponse,
     TermSearchRequest,
     TermBulkCreate,
+    TermCandidateResponse,
+    TermCandidateAccept,
+    TermCandidateBulkAccept,
 )
 from app.services.embedding_service import embedding_service
 from app.services.vector_store import vector_store
@@ -313,3 +316,142 @@ async def import_terms(
         db.commit()
 
     return {"success": success, "errors": row_errors}
+
+
+# --- Term Candidate Endpoints ---
+
+candidates_router = APIRouter(
+    prefix="/api/v1/term-candidates", tags=["Term Candidates"]
+)
+
+
+@candidates_router.get("", response_model=list[TermCandidateResponse])
+async def list_candidates(
+    status: Optional[str] = Query(default=None),
+    review_id: Optional[int] = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    """List term candidates with optional filtering."""
+    query = db.query(TermCandidate)
+    if status:
+        query = query.filter(TermCandidate.status == status)
+    if review_id:
+        query = query.filter(TermCandidate.review_id == review_id)
+    return query.order_by(TermCandidate.created_at.desc()).all()
+
+
+@candidates_router.put("/{candidate_id}/accept", response_model=TermCandidateResponse)
+async def accept_candidate(
+    candidate_id: int,
+    request: TermCandidateAccept = TermCandidateAccept(),
+    db: Session = Depends(get_db),
+):
+    """Accept a term candidate and register it as an official term."""
+    candidate = db.query(TermCandidate).filter(TermCandidate.id == candidate_id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Term candidate not found")
+    if candidate.status != "pending":
+        raise HTTPException(status_code=400, detail="Candidate already processed")
+
+    # Check for duplicate term
+    term_name = candidate.term
+    existing = db.query(Term).filter(Term.term == term_name).first()
+    if existing:
+        raise HTTPException(
+            status_code=400, detail=f"Term '{term_name}' already exists"
+        )
+
+    # Create official term
+    definition = request.definition or candidate.definition or ""
+    category = request.category or candidate.category or "一般"
+
+    # Generate embedding if service is available
+    embedding_bytes = None
+    if embedding_service.is_available():
+        try:
+            embed_text = f"{term_name}: {definition}"
+            embedding = await embedding_service.get_embedding(embed_text)
+            embedding_bytes = embedding_service.embedding_to_bytes(embedding)
+        except Exception:
+            pass
+
+    db_term = Term(
+        term=term_name,
+        definition=definition,
+        category=category,
+        usage_note=request.usage_note,
+        embedding=embedding_bytes,
+    )
+    db.add(db_term)
+
+    candidate.status = "accepted"
+    db.commit()
+    db.refresh(candidate)
+    return candidate
+
+
+@candidates_router.put("/{candidate_id}/reject", response_model=TermCandidateResponse)
+async def reject_candidate(
+    candidate_id: int,
+    db: Session = Depends(get_db),
+):
+    """Reject a term candidate."""
+    candidate = db.query(TermCandidate).filter(TermCandidate.id == candidate_id).first()
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Term candidate not found")
+    if candidate.status != "pending":
+        raise HTTPException(status_code=400, detail="Candidate already processed")
+
+    candidate.status = "rejected"
+    db.commit()
+    db.refresh(candidate)
+    return candidate
+
+
+@candidates_router.post("/bulk-accept")
+async def bulk_accept_candidates(
+    request: TermCandidateBulkAccept,
+    db: Session = Depends(get_db),
+):
+    """Bulk accept multiple term candidates."""
+    accepted = 0
+    skipped = 0
+    errors: list[str] = []
+
+    for cid in request.candidate_ids:
+        candidate = db.query(TermCandidate).filter(TermCandidate.id == cid).first()
+        if not candidate:
+            errors.append(f"ID {cid}: not found")
+            continue
+        if candidate.status != "pending":
+            skipped += 1
+            continue
+
+        # Check duplicate
+        existing = db.query(Term).filter(Term.term == candidate.term).first()
+        if existing:
+            errors.append(f"'{candidate.term}': already exists")
+            continue
+
+        # Generate embedding
+        embedding_bytes = None
+        if embedding_service.is_available():
+            try:
+                embed_text = f"{candidate.term}: {candidate.definition or ''}"
+                embedding = await embedding_service.get_embedding(embed_text)
+                embedding_bytes = embedding_service.embedding_to_bytes(embedding)
+            except Exception:
+                pass
+
+        db_term = Term(
+            term=candidate.term,
+            definition=candidate.definition or "",
+            category=candidate.category or "一般",
+            embedding=embedding_bytes,
+        )
+        db.add(db_term)
+        candidate.status = "accepted"
+        accepted += 1
+
+    db.commit()
+    return {"accepted": accepted, "skipped": skipped, "errors": errors}

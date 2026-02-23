@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, Search, Pencil, Trash2, Upload, FileSpreadsheet } from 'lucide-react'
-import { termsAPI, Term, TermCreate } from '@/lib/api'
+import { Plus, Search, Pencil, Trash2, Upload, Check, X, BookOpen } from 'lucide-react'
+import { termsAPI, termCandidatesAPI, Term, TermCreate, TermCandidate } from '@/lib/api'
 import { ImportModal } from '@/components/import-modal'
 import { formatDate } from '@/lib/utils'
 import { HelpTooltip } from '@/components/ui/tooltip'
@@ -23,10 +23,18 @@ export default function TermsPage() {
   const [showForm, setShowForm] = useState(false)
   const [showImport, setShowImport] = useState(false)
   const [editingTerm, setEditingTerm] = useState<Term | null>(null)
+  const [activeTab, setActiveTab] = useState<'terms' | 'candidates'>('terms')
+  const [candidates, setCandidates] = useState<TermCandidate[]>([])
+  const [candidatesLoading, setCandidatesLoading] = useState(false)
+  const [candidateActionLoading, setCandidateActionLoading] = useState<number | null>(null)
 
   useEffect(() => {
     loadTerms()
   }, [selectedCategory])
+
+  useEffect(() => {
+    if (activeTab === 'candidates') loadCandidates()
+  }, [activeTab])
 
   async function loadTerms() {
     try {
@@ -49,6 +57,58 @@ export default function TermsPage() {
       loadTerms()
     } catch (error) {
       console.error('Failed to delete term:', error)
+    }
+  }
+
+  async function loadCandidates() {
+    try {
+      setCandidatesLoading(true)
+      const data = await termCandidatesAPI.list({ status: 'pending' })
+      setCandidates(data)
+    } catch (error) {
+      console.error('Failed to load candidates:', error)
+    } finally {
+      setCandidatesLoading(false)
+    }
+  }
+
+  async function handleAcceptCandidate(id: number) {
+    setCandidateActionLoading(id)
+    try {
+      await termCandidatesAPI.accept(id)
+      setCandidates(prev => prev.filter(c => c.id !== id))
+      loadTerms()
+    } catch (error) {
+      console.error('Failed to accept candidate:', error)
+    } finally {
+      setCandidateActionLoading(null)
+    }
+  }
+
+  async function handleRejectCandidate(id: number) {
+    setCandidateActionLoading(id)
+    try {
+      await termCandidatesAPI.reject(id)
+      setCandidates(prev => prev.filter(c => c.id !== id))
+    } catch (error) {
+      console.error('Failed to reject candidate:', error)
+    } finally {
+      setCandidateActionLoading(null)
+    }
+  }
+
+  async function handleBulkAcceptCandidates() {
+    const ids = candidates.map(c => c.id)
+    if (ids.length === 0) return
+    setCandidateActionLoading(-1)
+    try {
+      await termCandidatesAPI.bulkAccept(ids)
+      setCandidates([])
+      loadTerms()
+    } catch (error) {
+      console.error('Failed to bulk accept:', error)
+    } finally {
+      setCandidateActionLoading(null)
     }
   }
 
@@ -81,6 +141,112 @@ export default function TermsPage() {
     <>
       <Header title="用語辞書" />
       <div className="p-6">
+        {/* Tab Toggle */}
+        <div className="mb-6 flex gap-1 rounded-lg bg-gray-100 p-1 w-fit">
+          <button
+            onClick={() => setActiveTab('terms')}
+            className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+              activeTab === 'terms'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            登録済み用語
+          </button>
+          <button
+            onClick={() => setActiveTab('candidates')}
+            className={`rounded-md px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${
+              activeTab === 'candidates'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <BookOpen className="h-4 w-4" />
+            AI抽出候補
+            {candidates.length > 0 && (
+              <Badge variant="destructive" className="text-xs">{candidates.length}</Badge>
+            )}
+          </button>
+        </div>
+
+        {activeTab === 'candidates' ? (
+          /* Candidates Tab */
+          <div>
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-sm text-gray-500">
+                レビュー時にAIが自動抽出した用語候補です。承認すると用語辞書に登録されます。
+              </p>
+              {candidates.length > 0 && (
+                <Button
+                  size="sm"
+                  onClick={handleBulkAcceptCandidates}
+                  disabled={candidateActionLoading === -1}
+                >
+                  <Check className="mr-1 h-4 w-4" />
+                  すべて承認
+                </Button>
+              )}
+            </div>
+            {candidatesLoading ? (
+              <div className="p-8 text-center text-gray-500">読み込み中...</div>
+            ) : candidates.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center text-gray-500">
+                  未対応の用語候補はありません
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {candidates.map((candidate) => (
+                  <Card key={candidate.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <span className="font-medium">{candidate.term}</span>
+                        {candidate.confidence != null && (
+                          <span className="text-xs text-gray-400">
+                            信頼度 {Math.round(candidate.confidence * 100)}%
+                          </span>
+                        )}
+                      </div>
+                      {candidate.category && (
+                        <Badge variant="outline" className="mb-2 text-xs">{candidate.category}</Badge>
+                      )}
+                      {candidate.definition && (
+                        <p className="text-sm text-gray-600 mb-2">{candidate.definition}</p>
+                      )}
+                      {candidate.context && (
+                        <p className="text-xs text-gray-400 italic mb-3 line-clamp-2">
+                          &ldquo;{candidate.context}&rdquo;
+                        </p>
+                      )}
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleAcceptCandidate(candidate.id)}
+                          disabled={candidateActionLoading === candidate.id}
+                        >
+                          <Check className="mr-1 h-3 w-3" />
+                          承認
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleRejectCandidate(candidate.id)}
+                          disabled={candidateActionLoading === candidate.id}
+                        >
+                          <X className="mr-1 h-3 w-3" />
+                          却下
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+        /* Terms Tab */
+        <>
         {/* Actions */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-2">
@@ -212,6 +378,8 @@ export default function TermsPage() {
             onDownloadTemplate={() => termsAPI.downloadTemplate()}
             onSuccess={() => loadTerms()}
           />
+        )}
+        </>
         )}
       </div>
     </>

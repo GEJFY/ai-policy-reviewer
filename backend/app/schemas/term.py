@@ -57,3 +57,38 @@ class TermBulkCreate(BaseModel):
     """Schema for bulk term creation."""
 
     terms: list[TermCreate]
+
+
+# --- TermCandidate schemas ---
+
+
+class TermCandidateResponse(BaseModel):
+    """Schema for term candidate response."""
+
+    id: int
+    review_id: int
+    document_id: int
+    term: str
+    definition: str | None = None
+    category: str | None = None
+    context: str | None = None
+    confidence: float | None = None
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class TermCandidateAccept(BaseModel):
+    """Schema for accepting a term candidate with optional edits."""
+
+    definition: str | None = Field(default=None, description="上書き定義（任意）")
+    category: str | None = Field(default=None, description="上書きカテゴリ（任意）")
+    usage_note: str | None = Field(default=None, description="使用上の注意（任意）")
+
+
+class TermCandidateBulkAccept(BaseModel):
+    """Schema for bulk-accepting term candidates."""
+
+    candidate_ids: list[int] = Field(..., min_length=1)
