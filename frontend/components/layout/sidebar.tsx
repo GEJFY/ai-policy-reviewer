@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/lib/auth-context'
 import {
   BookOpen,
   CheckSquare,
@@ -14,10 +15,12 @@ import {
   FileSearch,
   FolderSync,
   HelpCircle,
+  LogOut,
+  User,
 } from 'lucide-react'
 
 const navigation = [
-  { name: 'ダッシュボード', href: '/', icon: Home },
+  { name: 'ダッシュボード', href: '/dashboard', icon: Home },
   { name: '文書管理', href: '/documents', icon: FileText },
   { name: 'レビュー', href: '/reviews', icon: FileSearch },
   { name: '規程グループ', href: '/document-groups', icon: FolderSync },
@@ -30,16 +33,19 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const { user, logout } = useAuth()
 
   return (
     <aside className="flex h-full w-64 flex-col bg-gray-900" aria-label="メインナビゲーション">
       <div className="flex h-16 items-center px-6">
-        <h1 className="text-xl font-bold text-white">規程レビューツール</h1>
+        <Link href="/dashboard" className="text-xl font-bold text-white hover:text-gray-200 transition-colors">
+          規程レビューツール
+        </Link>
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4" aria-label="サイドバー">
         {navigation.map((item) => {
           const isActive = pathname === item.href ||
-            (item.href !== '/' && pathname.startsWith(item.href))
+            (item.href !== '/dashboard' && pathname.startsWith(item.href))
           return (
             <Link
               key={item.name}
@@ -58,7 +64,9 @@ export function Sidebar() {
           )
         })}
       </nav>
-      <div className="border-t border-gray-800 p-4">
+
+      {/* User info & settings */}
+      <div className="border-t border-gray-800 p-3 space-y-1">
         <Link
           href="/settings"
           aria-current={pathname === '/settings' ? 'page' : undefined}
@@ -72,6 +80,27 @@ export function Sidebar() {
           <Settings className="h-5 w-5" aria-hidden="true" />
           設定
         </Link>
+
+        {user && (
+          <div className="rounded-lg bg-gray-800/50 px-3 py-2.5 mt-2">
+            <div className="flex items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-white">
+                <User className="h-4 w-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">{user.display_name}</p>
+                <p className="text-xs text-gray-400 truncate">{user.roles[0]}</p>
+              </div>
+            </div>
+            <button
+              onClick={logout}
+              className="mt-2 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-gray-400 hover:bg-gray-700 hover:text-white transition-colors"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              ログアウト
+            </button>
+          </div>
+        )}
       </div>
     </aside>
   )

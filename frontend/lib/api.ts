@@ -4,7 +4,36 @@
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
-// Generic fetch wrapper with timeout
+// Helper: get auth headers from localStorage
+function getAuthHeaders(): Record<string, string> {
+  if (typeof window === 'undefined') return {}
+  const token = localStorage.getItem('access_token')
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+// Helper: attempt token refresh on 401
+async function tryRefreshToken(): Promise<string | null> {
+  if (typeof window === 'undefined') return null
+  const refreshToken = localStorage.getItem('refresh_token')
+  if (!refreshToken) return null
+
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    localStorage.setItem('access_token', data.access_token)
+    localStorage.setItem('refresh_token', data.refresh_token)
+    return data.access_token
+  } catch {
+    return null
+  }
+}
+
+// Generic fetch wrapper with timeout and auth
 export async function fetchAPI<T>(
   endpoint: string,
   options?: RequestInit
@@ -16,11 +45,39 @@ export async function fetchAPI<T>(
     const response = await fetch(`${API_BASE}${endpoint}`, {
       headers: {
         'Content-Type': 'application/json',
+        ...getAuthHeaders(),
         ...options?.headers,
       },
       ...options,
       signal: controller.signal,
     })
+
+  // Handle 401: try refresh token
+  if (response.status === 401) {
+    const newToken = await tryRefreshToken()
+    if (newToken) {
+      const retryResponse = await fetch(`${API_BASE}${endpoint}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${newToken}`,
+          ...options?.headers,
+        },
+        ...options,
+        signal: controller.signal,
+      })
+      if (retryResponse.ok) {
+        if (retryResponse.status === 204) return null as T
+        return retryResponse.json()
+      }
+    }
+    // Refresh failed: clear tokens and redirect to login
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      window.location.href = '/login'
+    }
+    throw new Error('認証が切れました。再度ログインしてください。')
+  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}))
