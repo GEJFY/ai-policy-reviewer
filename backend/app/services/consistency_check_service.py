@@ -2,6 +2,8 @@
 
 import json
 import logging
+from typing import Callable, Optional
+
 from sqlalchemy.orm import Session
 
 from app.models.document import Document, DocumentChunk
@@ -54,7 +56,16 @@ async def check_consistency(
     db: Session,
     document_ids: list[int],
 ) -> list[dict]:
-    """Check consistency between multiple documents.
+    """Check consistency between multiple documents."""
+    return await check_consistency_with_progress(db, document_ids)
+
+
+async def check_consistency_with_progress(
+    db: Session,
+    document_ids: list[int],
+    on_pair_complete: Optional[Callable[[int], None]] = None,
+) -> list[dict]:
+    """Check consistency between multiple documents with progress callback.
 
     For each pair of documents, uses vector search to find similar chunks,
     then sends them to LLM for consistency analysis.
@@ -62,6 +73,7 @@ async def check_consistency(
     Args:
         db: Database session
         document_ids: List of document IDs to check
+        on_pair_complete: Optional callback called with the number of completed pairs
 
     Returns:
         List of consistency findings
@@ -73,6 +85,7 @@ async def check_consistency(
     doc_map: dict[int, Document] = {int(d.id): d for d in documents}
 
     all_findings = []
+    completed = 0
 
     # Check each pair of documents
     for i in range(len(document_ids)):
@@ -80,10 +93,17 @@ async def check_consistency(
             doc_a = doc_map.get(document_ids[i])
             doc_b = doc_map.get(document_ids[j])
             if not doc_a or not doc_b:
+                completed += 1
+                if on_pair_complete:
+                    on_pair_complete(completed)
                 continue
 
             findings = await _check_pair(db, doc_a, doc_b)
             all_findings.extend(findings)
+
+            completed += 1
+            if on_pair_complete:
+                on_pair_complete(completed)
 
     return all_findings
 

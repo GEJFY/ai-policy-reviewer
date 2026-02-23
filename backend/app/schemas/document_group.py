@@ -77,3 +77,17 @@ class ConsistencyCheckResponse(BaseModel):
     medium_count: int = 0
     low_count: int = 0
     findings: list[ConsistencyFinding] = []
+
+
+class ConsistencyCheckJobResponse(BaseModel):
+    """Schema for async consistency check job."""
+
+    job_id: int
+    group_id: int
+    status: str
+    total_pairs: int = 0
+    completed_pairs: int = 0
+    progress_percent: float = 0.0
+
+    class Config:
+        from_attributes = True

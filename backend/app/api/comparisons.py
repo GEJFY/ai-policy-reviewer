@@ -1,7 +1,7 @@
 """API endpoints for parent-subsidiary policy comparison."""
 
 import io
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from urllib.parse import quote
@@ -23,6 +23,9 @@ from app.schemas.comparison import (
     ComparisonResultResponse,
 )
 from app.services.llm_service import llm_service
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/comparisons", tags=["Comparisons"])
 
@@ -226,11 +229,13 @@ async def set_subsidiary(
     return {"message": "Subsidiary document set"}
 
 
-@router.post("/{project_id}/compare")
-async def run_comparison(project_id: int, db: Session = Depends(get_db)):
-    """Run comparison between parent and subsidiary documents."""
-    from app.services.comparison_service import compare_single_item
-
+@router.post("/{project_id}/compare", status_code=202)
+async def run_comparison(
+    project_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """Start async comparison between parent and subsidiary documents."""
     project = (
         db.query(ComparisonProject).filter(ComparisonProject.id == project_id).first()
     )
@@ -251,15 +256,6 @@ async def run_comparison(project_id: int, db: Session = Depends(get_db)):
             detail="LLM service not available. Check provider configuration.",
         )
 
-    parent_doc = (
-        db.query(Document).filter(Document.id == project.parent_document_id).first()
-    )
-    subsidiary_doc = (
-        db.query(Document).filter(Document.id == project.subsidiary_document_id).first()
-    )
-    if not parent_doc or not subsidiary_doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-
     project.status = "comparing"  # type: ignore[assignment]
     db.commit()
 
@@ -269,44 +265,38 @@ async def run_comparison(project_id: int, db: Session = Depends(get_db)):
     ).delete()
     db.commit()
 
-    results: list[dict[str, str]] = []
-    for ci in project.check_items:
-        try:
-            result = await compare_single_item(
-                db, str(ci.item_text), parent_doc, subsidiary_doc
-            )
-            cr = ComparisonResult(
-                project_id=project_id,
-                check_item_id=ci.id,
-                status=result["status"],
-                parent_text=result.get("parent_text"),
-                subsidiary_text=result.get("subsidiary_text"),
-                explanation=result.get("explanation"),
-            )
-            db.add(cr)
-            results.append(result)
-        except Exception as e:
-            cr = ComparisonResult(
-                project_id=project_id,
-                check_item_id=ci.id,
-                status="DIFFERENT",
-                explanation=f"比較処理エラー: {str(e)}",
-            )
-            db.add(cr)
-            results.append({"status": "DIFFERENT", "explanation": str(e)})
-
-    project.status = "completed"  # type: ignore[assignment]
-    db.commit()
-
-    status_counts: dict[str, int] = {}
-    for r in results:
-        s = r["status"]
-        status_counts[s] = status_counts.get(s, 0) + 1
+    background_tasks.add_task(execute_comparison_task, project_id)
 
     return {
-        "message": f"Comparison completed for {len(results)} items",
-        "total": len(results),
-        "status_counts": status_counts,
+        "message": "Comparison started",
+        "project_id": project_id,
+        "status": "comparing",
+        "total_items": len(project.check_items),
+    }
+
+
+@router.get("/{project_id}/status")
+async def get_comparison_status(project_id: int, db: Session = Depends(get_db)):
+    """Get the progress of a running comparison."""
+    project = (
+        db.query(ComparisonProject).filter(ComparisonProject.id == project_id).first()
+    )
+    if not project:
+        raise HTTPException(status_code=404, detail="Comparison project not found")
+
+    total_items = len(project.check_items)
+    completed_items = (
+        db.query(ComparisonResult)
+        .filter(ComparisonResult.project_id == project_id)
+        .count()
+    )
+    progress = (completed_items / total_items * 100) if total_items > 0 else 0
+
+    return {
+        "status": project.status,
+        "total_items": total_items,
+        "completed_items": completed_items,
+        "progress_percent": round(progress, 1),
     }
 
 
@@ -464,3 +454,79 @@ async def export_results(project_id: int, db: Session = Depends(get_db)):
             "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
         },
     )
+
+
+async def execute_comparison_task(project_id: int):
+    """Background task for comparison execution."""
+    from app.db.database import SessionLocal
+    from app.services.comparison_service import compare_single_item
+
+    logger.info(f"Starting comparison task: project_id={project_id}")
+
+    db = SessionLocal()
+    try:
+        project = (
+            db.query(ComparisonProject)
+            .filter(ComparisonProject.id == project_id)
+            .first()
+        )
+        if not project:
+            logger.error(f"Comparison project not found: {project_id}")
+            return
+
+        parent_doc = (
+            db.query(Document).filter(Document.id == project.parent_document_id).first()
+        )
+        subsidiary_doc = (
+            db.query(Document)
+            .filter(Document.id == project.subsidiary_document_id)
+            .first()
+        )
+        if not parent_doc or not subsidiary_doc:
+            project.status = "failed"  # type: ignore[assignment]
+            db.commit()
+            return
+
+        for ci in project.check_items:
+            try:
+                result = await compare_single_item(
+                    db, str(ci.item_text), parent_doc, subsidiary_doc
+                )
+                cr = ComparisonResult(
+                    project_id=project_id,
+                    check_item_id=ci.id,
+                    status=result["status"],
+                    parent_text=result.get("parent_text"),
+                    subsidiary_text=result.get("subsidiary_text"),
+                    explanation=result.get("explanation"),
+                )
+            except Exception as e:
+                logger.warning(f"Comparison item failed: check_item={ci.id}, error={e}")
+                cr = ComparisonResult(
+                    project_id=project_id,
+                    check_item_id=ci.id,
+                    status="DIFFERENT",
+                    explanation=f"比較処理エラー: {str(e)}",
+                )
+            db.add(cr)
+            db.commit()
+
+        project.status = "completed"  # type: ignore[assignment]
+        db.commit()
+        logger.info(f"Comparison task completed: project_id={project_id}")
+
+    except Exception as e:
+        logger.error(
+            f"Comparison task failed: project_id={project_id}, error={e}",
+            exc_info=True,
+        )
+        project = (
+            db.query(ComparisonProject)
+            .filter(ComparisonProject.id == project_id)
+            .first()
+        )
+        if project:
+            project.status = "failed"  # type: ignore[assignment]
+            db.commit()
+    finally:
+        db.close()

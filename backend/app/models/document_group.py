@@ -45,3 +45,24 @@ class DocumentGroupMember(Base):
 
     def __repr__(self):
         return f"<DocumentGroupMember(group={self.group_id}, doc={self.document_id})>"
+
+
+class ConsistencyCheckJob(Base):
+    """Background job for consistency check execution."""
+
+    __tablename__ = "consistency_check_jobs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    group_id = Column(Integer, ForeignKey("document_groups.id"), nullable=False)
+    status = Column(String(20), default="processing")  # processing/completed/failed
+    total_pairs = Column(Integer, default=0)
+    completed_pairs = Column(Integer, default=0)
+    result_json = Column(Text)  # JSON string of findings
+    error_message = Column(Text)
+    created_at = Column(DateTime, server_default=func.now())
+    completed_at = Column(DateTime)
+
+    group = relationship("DocumentGroup")
+
+    def __repr__(self):
+        return f"<ConsistencyCheckJob(id={self.id}, group={self.group_id}, status='{self.status}')>"
