@@ -25,26 +25,32 @@ describe('cn', () => {
 })
 
 describe('formatDate', () => {
-  it('formats ISO string to ja-JP locale', () => {
+  it('formats ISO string in Asia/Tokyo timezone', () => {
+    // 2025-03-15T10:30:00Z = 2025-03-15T19:30:00 JST
     const result = formatDate('2025-03-15T10:30:00Z')
-    // ja-JP locale output contains year/month/day
     expect(result).toMatch(/2025/)
     expect(result).toMatch(/03/)
     expect(result).toMatch(/15/)
+    expect(result).toMatch(/19/) // 10:30 UTC = 19:30 JST
+    expect(result).toMatch(/30/)
   })
 
-  it('formats Date object', () => {
+  it('formats Date object in Asia/Tokyo timezone', () => {
+    // 2025-01-01T00:00:00Z = 2025-01-01T09:00:00 JST
     const date = new Date('2025-01-01T00:00:00Z')
     const result = formatDate(date)
     expect(result).toMatch(/2025/)
     expect(result).toMatch(/01/)
+    expect(result).toMatch(/09/) // 00:00 UTC = 09:00 JST
   })
 
-  it('includes time components', () => {
-    const result = formatDate('2025-06-20T14:30:00Z')
-    // Should include hour:minute in some format
-    expect(result).toBeTruthy()
-    expect(result.length).toBeGreaterThan(8) // longer than just date
+  it('handles date crossing midnight in JST', () => {
+    // 2025-06-20T16:00:00Z = 2025-06-21T01:00:00 JST (next day)
+    const result = formatDate('2025-06-20T16:00:00Z')
+    expect(result).toMatch(/2025/)
+    expect(result).toMatch(/06/)
+    expect(result).toMatch(/21/) // crosses to next day in JST
+    expect(result).toMatch(/01/) // 01:00 JST
   })
 })
 
