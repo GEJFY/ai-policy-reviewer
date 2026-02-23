@@ -16,6 +16,7 @@ AIを使用した規程文書のレビューを実行するエンジン。
     - GCP Vertex AI: Gemini 3.0 Flash/Pro Preview
 """
 
+import asyncio
 import json
 import time
 import logging
@@ -117,6 +118,9 @@ class ReviewEngine:
         medium_count = 0
         low_count = 0
 
+        # Concurrency limit for parallel check item processing
+        MAX_CONCURRENT_CHECKS = 3
+
         try:
             # Verify document has content
             has_chunks = (
@@ -128,56 +132,116 @@ class ReviewEngine:
                 logger.error(f"Document has no content | document_id={document.id}")
                 raise ValueError("Document has no content")
 
-            # Process each check item with smart chunk selection
-            for idx, check_item_id in enumerate(check_item_ids):
-                # Update check item status
-                review_check = (
-                    db.query(ReviewCheckItem)
-                    .filter(
-                        ReviewCheckItem.review_id == review_id,
-                        ReviewCheckItem.check_item_id == check_item_id,
-                    )
-                    .first()
-                )
-                if review_check:
-                    review_check.status = "processing"
-                    db.commit()
+            # Process check items in parallel with semaphore
+            semaphore = asyncio.Semaphore(MAX_CONCURRENT_CHECKS)
 
-                check_start = time.time()
+            async def process_check_item(idx: int, check_item_id: int):
+                """Process a single check item with its own DB session."""
+                from app.db.database import SessionLocal
 
-                # Get check item name for smart chunk selection
-                check_item = (
-                    db.query(CheckItem).filter(CheckItem.id == check_item_id).first()
-                )
-                check_query = check_item.name if check_item else ""
+                async with semaphore:
+                    task_db = SessionLocal()
+                    try:
+                        # Update check item status
+                        review_check = (
+                            task_db.query(ReviewCheckItem)
+                            .filter(
+                                ReviewCheckItem.review_id == review_id,
+                                ReviewCheckItem.check_item_id == check_item_id,
+                            )
+                            .first()
+                        )
+                        if review_check:
+                            review_check.status = "processing"
+                            task_db.commit()
 
-                logger.debug(
-                    f"Processing check item | check_item_id={check_item_id} | "
-                    f"progress={idx + 1}/{len(check_item_ids)}"
-                )
+                        check_start = time.time()
 
-                # Smart chunk selection per check item
-                chunks = await self._get_relevant_chunks(db, document.id, check_query)
-                if not chunks and document.extracted_text:
-                    chunks = [document.extracted_text]
+                        # Get check item name for smart chunk selection
+                        check_item = (
+                            task_db.query(CheckItem)
+                            .filter(CheckItem.id == check_item_id)
+                            .first()
+                        )
+                        check_query = check_item.name if check_item else ""
 
-                logger.debug(
-                    f"Chunks selected | count={len(chunks)} | "
-                    f"total_chars={sum(len(c) for c in chunks)}"
-                )
+                        logger.debug(
+                            f"Processing check item | check_item_id={check_item_id} | "
+                            f"progress={idx + 1}/{len(check_item_ids)}"
+                        )
 
-                try:
-                    # Execute review for this check item
-                    findings = await self._execute_check_item(
-                        db=db,
-                        review_id=review_id,
-                        check_item_id=check_item_id,
-                        document_chunks=chunks,
-                    )
-                    all_findings.extend(findings)
+                        # Smart chunk selection per check item
+                        chunks = await self._get_relevant_chunks(
+                            task_db, document.id, check_query
+                        )
+                        if not chunks and document.extracted_text:
+                            chunks = [document.extracted_text]
 
-                    # Count by severity
-                    for f in findings:
+                        # Execute review for this check item
+                        findings = await self._execute_check_item(
+                            db=task_db,
+                            review_id=review_id,
+                            check_item_id=check_item_id,
+                            document_chunks=chunks,
+                        )
+
+                        check_duration = (time.time() - check_start) * 1000
+                        logger.info(
+                            f"Check item completed | check_item_id={check_item_id} | "
+                            f"findings={len(findings)} | duration_ms={check_duration:.2f}"
+                        )
+
+                        # Update check item status
+                        if review_check:
+                            review_check = (
+                                task_db.query(ReviewCheckItem)
+                                .filter(
+                                    ReviewCheckItem.review_id == review_id,
+                                    ReviewCheckItem.check_item_id == check_item_id,
+                                )
+                                .first()
+                            )
+                            if review_check:
+                                review_check.status = "completed"
+                                task_db.commit()
+
+                        return findings
+
+                    except Exception as e:
+                        logger.error(
+                            f"Check item failed | check_item_id={check_item_id} | "
+                            f"error={str(e)}",
+                            exc_info=True,
+                        )
+                        review_check = (
+                            task_db.query(ReviewCheckItem)
+                            .filter(
+                                ReviewCheckItem.review_id == review_id,
+                                ReviewCheckItem.check_item_id == check_item_id,
+                            )
+                            .first()
+                        )
+                        if review_check:
+                            review_check.status = "failed"
+                            task_db.commit()
+                        return []
+                    finally:
+                        task_db.close()
+
+            # Launch all check items in parallel (bounded by semaphore)
+            tasks = [
+                process_check_item(idx, cid) for idx, cid in enumerate(check_item_ids)
+            ]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # Collect findings from all results
+            for result in results:
+                if isinstance(result, Exception):
+                    logger.error(f"Check item task exception | error={result}")
+                    continue
+                if isinstance(result, list):
+                    all_findings.extend(result)
+                    for f in result:
                         if f.severity == "HIGH":
                             high_count += 1
                         elif f.severity == "MEDIUM":
@@ -185,27 +249,8 @@ class ReviewEngine:
                         else:
                             low_count += 1
 
-                    check_duration = (time.time() - check_start) * 1000
-                    logger.info(
-                        f"Check item completed | check_item_id={check_item_id} | "
-                        f"findings={len(findings)} | duration_ms={check_duration:.2f}"
-                    )
-
-                    # Update check item status
-                    if review_check:
-                        review_check.status = "completed"
-                        db.commit()
-
-                except Exception as e:
-                    logger.error(
-                        f"Check item failed | check_item_id={check_item_id} | error={str(e)}",
-                        exc_info=True,
-                    )
-                    if review_check:
-                        review_check.status = "failed"
-                        db.commit()
-
             # Update review status
+            review = db.query(Review).filter(Review.id == review_id).first()
             review.status = "completed"
             review.completed_at = datetime.now(timezone.utc)
             db.commit()
@@ -219,10 +264,13 @@ class ReviewEngine:
             )
 
         except Exception as e:
-            review.status = "failed"
-            db.commit()
+            review = db.query(Review).filter(Review.id == review_id).first()
+            if review:
+                review.status = "failed"
+                db.commit()
             logger.error(
-                f"Review failed | review_id={review_id} | error={str(e)}", exc_info=True
+                f"Review failed | review_id={review_id} | error={str(e)}",
+                exc_info=True,
             )
             raise e
 
