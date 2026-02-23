@@ -4,7 +4,19 @@ Settings API endpoint tests.
 設定APIのテスト。シークレットマスク・モデル一覧を検証。
 """
 
+import pytest
 from fastapi.testclient import TestClient
+
+from app.main import app
+from app.auth import require_admin
+
+
+@pytest.fixture(autouse=True)
+def override_admin_dep():
+    """テスト用にrequire_admin依存関係を無効化。"""
+    app.dependency_overrides[require_admin] = lambda: None
+    yield
+    app.dependency_overrides.pop(require_admin, None)
 
 
 class TestSettingsAPI:
@@ -93,11 +105,11 @@ class TestSettingsAPI:
         response = client.get("/api/v1/settings/")
         data = response.json()
 
-        app = data["app"]
-        assert "upload_dir" in app
-        assert "max_file_size_mb" in app
-        assert "cors_origins" in app
-        assert isinstance(app["cors_origins"], list)
+        app_config = data["app"]
+        assert "upload_dir" in app_config
+        assert "max_file_size_mb" in app_config
+        assert "cors_origins" in app_config
+        assert isinstance(app_config["cors_origins"], list)
 
     def test_get_available_models(self, client: TestClient):
         """モデル一覧エンドポイントが正常に動作する。"""
@@ -127,3 +139,12 @@ class TestSettingsAPI:
             assert "tier" in model
             assert "model" in model
             assert model["tier"] in ["precision", "balanced", "cost_effective"]
+
+    def test_settings_requires_auth_without_override(self, client: TestClient):
+        """認証なしでは401になる（オーバーライドなし時）。"""
+        # オーバーライドを一時的に解除
+        app.dependency_overrides.pop(require_admin, None)
+        response = client.get("/api/v1/settings/")
+        assert response.status_code == 401
+        # 元に戻す
+        app.dependency_overrides[require_admin] = lambda: None

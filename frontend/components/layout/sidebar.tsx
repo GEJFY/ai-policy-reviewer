@@ -14,7 +14,6 @@ import {
   Settings,
   FileSearch,
   FolderSync,
-  HelpCircle,
   LogOut,
   User,
 } from 'lucide-react'
@@ -28,7 +27,6 @@ const navigation = [
   { name: '用語辞書', href: '/terms', icon: BookOpen },
   { name: 'チェック項目', href: '/check-items', icon: CheckSquare },
   { name: '記載ルール', href: '/writing-rules', icon: ListChecks },
-  { name: 'マニュアル', href: '/manual', icon: HelpCircle },
 ]
 
 export function Sidebar() {
@@ -67,19 +65,21 @@ export function Sidebar() {
 
       {/* User info & settings */}
       <div className="border-t border-gray-800 p-3 space-y-1">
-        <Link
-          href="/settings"
-          aria-current={pathname === '/settings' ? 'page' : undefined}
-          className={cn(
-            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white',
-            pathname === '/settings'
-              ? 'bg-gray-800 text-white'
-              : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-          )}
-        >
-          <Settings className="h-5 w-5" aria-hidden="true" />
-          設定
-        </Link>
+        {user?.roles?.includes('admin') && (
+          <Link
+            href="/settings"
+            aria-current={pathname === '/settings' ? 'page' : undefined}
+            className={cn(
+              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white',
+              pathname === '/settings'
+                ? 'bg-gray-800 text-white'
+                : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+            )}
+          >
+            <Settings className="h-5 w-5" aria-hidden="true" />
+            設定
+          </Link>
+        )}
 
         {user && (
           <div className="rounded-lg bg-gray-800/50 px-3 py-2.5 mt-2">

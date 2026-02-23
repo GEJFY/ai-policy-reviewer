@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Bell, User, LogOut, Settings } from 'lucide-react'
+import { Bell, HelpCircle, User, LogOut, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth-context'
 import Link from 'next/link'
@@ -29,6 +29,11 @@ export function Header({ title }: HeaderProps) {
     <header className="flex h-16 items-center justify-between border-b bg-white px-6">
       <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
       <div className="flex items-center gap-4">
+        <Link href="/manual">
+          <Button variant="ghost" size="icon" aria-label="ヘルプ・マニュアル">
+            <HelpCircle className="h-5 w-5" aria-hidden="true" />
+          </Button>
+        </Link>
         <Button variant="ghost" size="icon" aria-label="通知">
           <Bell className="h-5 w-5" aria-hidden="true" />
         </Button>
@@ -55,14 +60,16 @@ export function Header({ title }: HeaderProps) {
                   <p className="text-xs text-gray-500">{user.username}</p>
                 </div>
               )}
-              <Link
-                href="/settings"
-                onClick={() => setShowMenu(false)}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              >
-                <Settings className="h-4 w-4" />
-                設定
-              </Link>
+              {user?.roles?.includes('admin') && (
+                <Link
+                  href="/settings"
+                  onClick={() => setShowMenu(false)}
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  <Settings className="h-4 w-4" />
+                  設定
+                </Link>
+              )}
               <button
                 onClick={() => { setShowMenu(false); logout() }}
                 className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"

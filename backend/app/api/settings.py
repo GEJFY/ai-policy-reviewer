@@ -8,11 +8,16 @@ Settings API endpoints.
 import re
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.config import settings, MODEL_TIER_DEFAULTS, LLMProvider
+from app.auth import require_admin
 
-router = APIRouter(prefix="/api/v1/settings", tags=["Settings"])
+router = APIRouter(
+    prefix="/api/v1/settings",
+    tags=["Settings"],
+    dependencies=[Depends(require_admin)],
+)
 
 
 def _mask_secret(value: str) -> str:
