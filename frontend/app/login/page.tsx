@@ -108,14 +108,16 @@ function LoginForm() {
             </button>
           </form>
 
-          {/* Demo account info */}
-          <div className="mt-6 rounded-lg bg-blue-50 p-4 border border-blue-100">
-            <p className="text-xs font-medium text-blue-700 mb-1">デモアカウント</p>
-            <div className="text-xs text-blue-600 space-y-0.5">
-              <p>管理者: <code className="bg-blue-100 px-1 rounded">admin</code> / <code className="bg-blue-100 px-1 rounded">admin123</code></p>
-              <p>レビュアー: <code className="bg-blue-100 px-1 rounded">reviewer</code> / <code className="bg-blue-100 px-1 rounded">admin123</code></p>
+          {/* Demo account info (controlled by env var) */}
+          {process.env.NEXT_PUBLIC_SHOW_DEMO_CREDENTIALS === 'true' && (
+            <div className="mt-6 rounded-lg bg-blue-50 p-4 border border-blue-100">
+              <p className="text-xs font-medium text-blue-700 mb-1">デモアカウント</p>
+              <div className="text-xs text-blue-600 space-y-0.5">
+                <p>管理者: <code className="bg-blue-100 px-1 rounded">admin</code> / <code className="bg-blue-100 px-1 rounded">admin123</code></p>
+                <p>レビュアー: <code className="bg-blue-100 px-1 rounded">reviewer</code> / <code className="bg-blue-100 px-1 rounded">admin123</code></p>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Register link */}
           <div className="mt-6 text-center text-sm text-gray-500">

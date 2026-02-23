@@ -39,4 +39,9 @@ describe('Header', () => {
     render(<Header title="テスト" />)
     expect(screen.getByText('Test User')).toBeInTheDocument()
   })
+
+  it('renders help button with accessible label', () => {
+    render(<Header title="テスト" />)
+    expect(screen.getByRole('button', { name: 'ヘルプ・マニュアル' })).toBeInTheDocument()
+  })
 })

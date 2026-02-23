@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Header } from '@/components/layout/header'
+import { useAuth } from '@/lib/auth-context'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -37,10 +39,30 @@ function providerLabel(key: string): string {
 }
 
 export default function SettingsPage() {
+  const { user } = useAuth()
+  const router = useRouter()
   const [settings, setSettings] = useState<SystemSettings | null>(null)
   const [health, setHealth] = useState<HealthDetailed | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Admin-only access guard
+  useEffect(() => {
+    if (user && !user.roles?.includes('admin')) {
+      router.push('/dashboard')
+    }
+  }, [user, router])
+
+  if (!user?.roles?.includes('admin')) {
+    return (
+      <>
+        <Header title="設定" />
+        <div className="p-6 text-center text-gray-500">
+          管理者のみアクセスできます。
+        </div>
+      </>
+    )
+  }
 
   useEffect(() => {
     async function loadData() {
