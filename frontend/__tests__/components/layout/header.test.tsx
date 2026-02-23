@@ -1,6 +1,18 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { Header } from '@/components/layout/header'
+
+// Mock useAuth to avoid needing AuthProvider + Next.js router
+vi.mock('@/lib/auth-context', () => ({
+  useAuth: () => ({
+    user: { user_id: '1', username: 'testuser', display_name: 'Test User', roles: ['user'] },
+    isAuthenticated: true,
+    isLoading: false,
+    login: vi.fn(),
+    register: vi.fn(),
+    logout: vi.fn(),
+  }),
+}))
 
 describe('Header', () => {
   it('renders title', () => {
@@ -13,11 +25,6 @@ describe('Header', () => {
     expect(screen.getByRole('button', { name: '通知' })).toBeInTheDocument()
   })
 
-  it('renders user button with accessible label', () => {
-    render(<Header title="テスト" />)
-    expect(screen.getByRole('button', { name: 'ユーザー' })).toBeInTheDocument()
-  })
-
   it('renders as header element', () => {
     render(<Header title="テスト" />)
     expect(screen.getByRole('banner')).toBeInTheDocument()
@@ -25,7 +32,11 @@ describe('Header', () => {
 
   it('renders without title', () => {
     render(<Header />)
-    // Should still render the header element
     expect(screen.getByRole('banner')).toBeInTheDocument()
+  })
+
+  it('displays user name', () => {
+    render(<Header title="テスト" />)
+    expect(screen.getByText('Test User')).toBeInTheDocument()
   })
 })

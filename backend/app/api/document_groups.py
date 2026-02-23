@@ -116,9 +116,9 @@ async def update_group(
         raise HTTPException(status_code=404, detail="Document group not found")
 
     if request.name is not None:
-        group.name = request.name  # type: ignore[assignment]
+        group.name = request.name
     if request.description is not None:
-        group.description = request.description  # type: ignore[assignment]
+        group.description = request.description
     db.commit()
     db.refresh(group)
 
