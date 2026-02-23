@@ -27,7 +27,7 @@ import {
   Pencil,
   FileDown,
 } from 'lucide-react'
-import { reviewsAPI, findingsAPI, Review, Finding } from '@/lib/api'
+import { reviewsAPI, findingsAPI, termCandidatesAPI, Review, Finding, TermCandidate } from '@/lib/api'
 import { formatDate } from '@/lib/utils'
 import { HelpTooltip } from '@/components/ui/tooltip'
 import { TIPS } from '@/lib/tooltip-texts'
@@ -61,6 +61,8 @@ export default function ReviewDetailPage() {
   const [showRevisedText, setShowRevisedText] = useState(false)
   const [editingSuggestion, setEditingSuggestion] = useState<Record<number, string>>({})
   const [showEditFor, setShowEditFor] = useState<number | null>(null)
+  const [termCandidates, setTermCandidates] = useState<TermCandidate[]>([])
+  const [candidateActionLoading, setCandidateActionLoading] = useState<number | null>(null)
 
   useEffect(() => {
     loadReview()
@@ -88,6 +90,13 @@ export default function ReviewDetailPage() {
       setReview(reviewData)
       setFindings(findingsData)
       setError(null)
+
+      // Load term candidates (non-blocking)
+      if (reviewData.status === 'completed') {
+        termCandidatesAPI.list({ review_id: reviewId })
+          .then(setTermCandidates)
+          .catch(() => {})
+      }
     } catch (error) {
       console.error('Failed to load review:', error)
       setError('レビューの読み込みに失敗しました。バックエンドが起動しているか確認してください。')
@@ -598,6 +607,87 @@ export default function ReviewDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Term Candidates */}
+      {review.status === 'completed' && termCandidates.length > 0 && (
+        <div className="mt-8 p-6">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            用語候補
+            <Badge variant="secondary">{termCandidates.filter(c => c.status === 'pending').length} 件未対応</Badge>
+          </h3>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {termCandidates.map((candidate) => (
+              <Card key={candidate.id} className={candidate.status !== 'pending' ? 'opacity-60' : ''}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <span className="font-medium text-sm">{candidate.term}</span>
+                    <div className="flex items-center gap-1">
+                      {candidate.confidence != null && (
+                        <span className="text-xs text-gray-400">
+                          {Math.round(candidate.confidence * 100)}%
+                        </span>
+                      )}
+                      {candidate.status === 'accepted' && <Badge variant="success">登録済</Badge>}
+                      {candidate.status === 'rejected' && <Badge variant="destructive">却下</Badge>}
+                    </div>
+                  </div>
+                  {candidate.category && (
+                    <Badge variant="outline" className="mb-2 text-xs">{candidate.category}</Badge>
+                  )}
+                  {candidate.definition && (
+                    <p className="text-xs text-gray-600 mb-2 line-clamp-2">{candidate.definition}</p>
+                  )}
+                  {candidate.context && (
+                    <p className="text-xs text-gray-400 italic mb-3 line-clamp-1">
+                      &ldquo;{candidate.context}&rdquo;
+                    </p>
+                  )}
+                  {candidate.status === 'pending' && (
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={candidateActionLoading === candidate.id}
+                        onClick={async () => {
+                          setCandidateActionLoading(candidate.id)
+                          try {
+                            await termCandidatesAPI.accept(candidate.id)
+                            setTermCandidates(prev => prev.map(c =>
+                              c.id === candidate.id ? { ...c, status: 'accepted' } : c
+                            ))
+                          } catch { setActionError('用語の登録に失敗しました') }
+                          finally { setCandidateActionLoading(null) }
+                        }}
+                      >
+                        <Check className="mr-1 h-3 w-3" />
+                        登録
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={candidateActionLoading === candidate.id}
+                        onClick={async () => {
+                          setCandidateActionLoading(candidate.id)
+                          try {
+                            await termCandidatesAPI.reject(candidate.id)
+                            setTermCandidates(prev => prev.map(c =>
+                              c.id === candidate.id ? { ...c, status: 'rejected' } : c
+                            ))
+                          } catch { setActionError('却下に失敗しました') }
+                          finally { setCandidateActionLoading(null) }
+                        }}
+                      >
+                        <X className="mr-1 h-3 w-3" />
+                        却下
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Context Modal */}
       {contextFindingId !== null && (

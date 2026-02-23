@@ -33,6 +33,7 @@ from app.services.prompt_builder import prompt_builder
 from app.services.embedding_service import embedding_service
 from app.services.vector_store import vector_store
 from app.services.llm_service import llm_service, LLMResponse
+from app.services.term_extraction_service import term_extraction_service
 
 logger = logging.getLogger(__name__)
 
@@ -263,6 +264,19 @@ class ReviewEngine:
                 f"high={high_count} | medium={medium_count} | low={low_count} | "
                 f"duration_sec={duration_sec:.2f}"
             )
+
+            # Non-critical: extract term candidates from reviewed document
+            try:
+                await term_extraction_service.extract_candidates(
+                    db=db,
+                    review_id=review_id,
+                    document_id=document.id,
+                )
+            except Exception as e:
+                logger.warning(
+                    f"Term extraction failed (non-critical) | review_id={review_id} | "
+                    f"error={str(e)}"
+                )
 
         except Exception as e:
             review = db.query(Review).filter(Review.id == review_id).first()

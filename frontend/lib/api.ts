@@ -341,6 +341,20 @@ export interface DashboardStats {
   review_by_status: { pending: number; processing: number; completed: number; failed: number }
 }
 
+// Term Candidate types
+export interface TermCandidate {
+  id: number
+  review_id: number
+  document_id: number
+  term: string
+  definition: string | null
+  category: string | null
+  context: string | null
+  confidence: number | null
+  status: string
+  created_at: string
+}
+
 // Import result type
 export interface ImportResult {
   success: number
@@ -419,6 +433,34 @@ export const termsAPI = {
     }),
   downloadTemplate: () => downloadFile(`${API_BASE}/api/v1/terms/template`, 'terms_template.csv'),
   importFile: (file: File) => uploadImportFile(`${API_BASE}/api/v1/terms/import`, file),
+}
+
+// Term Candidates
+export const termCandidatesAPI = {
+  list: (params?: { status?: string; review_id?: number }) => {
+    const searchParams = new URLSearchParams()
+    if (params?.status) searchParams.set('status', params.status)
+    if (params?.review_id) searchParams.set('review_id', String(params.review_id))
+    const query = searchParams.toString() ? `?${searchParams}` : ''
+    return fetchAPI<TermCandidate[]>(`/api/v1/term-candidates${query}`)
+  },
+  accept: (id: number, data?: { definition?: string; category?: string; usage_note?: string }) =>
+    fetchAPI<TermCandidate>(`/api/v1/term-candidates/${id}/accept`, {
+      method: 'PUT',
+      body: JSON.stringify(data || {}),
+    }),
+  reject: (id: number) =>
+    fetchAPI<TermCandidate>(`/api/v1/term-candidates/${id}/reject`, {
+      method: 'PUT',
+    }),
+  bulkAccept: (candidateIds: number[]) =>
+    fetchAPI<{ accepted: number; skipped: number; errors: string[] }>(
+      '/api/v1/term-candidates/bulk-accept',
+      {
+        method: 'POST',
+        body: JSON.stringify({ candidate_ids: candidateIds }),
+      }
+    ),
 }
 
 // Check Items
