@@ -10,7 +10,7 @@ export async function fetchAPI<T>(
   options?: RequestInit
 ): Promise<T> {
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 10000)
+  const timeout = setTimeout(() => controller.abort(), 120000)
 
   try {
     const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -637,10 +637,17 @@ export const comparisonsAPI = {
       body: JSON.stringify({ subsidiary_document_id }),
     }),
   compare: (id: number) =>
-    fetchAPI<{ message: string; total: number; status_counts: Record<string, number> }>(
+    fetchAPI<{ message: string; project_id: number; status: string; total_items: number }>(
       `/api/v1/comparisons/${id}/compare`,
       { method: 'POST' }
     ),
+  getStatus: (id: number) =>
+    fetchAPI<{
+      status: string
+      total_items: number
+      completed_items: number
+      progress_percent: number
+    }>(`/api/v1/comparisons/${id}/status`),
   exportExcel: async (id: number) => {
     const response = await fetch(`${API_BASE}/api/v1/comparisons/${id}/export`)
     if (!response.ok) {
@@ -774,8 +781,27 @@ export const documentGroupsAPI = {
       method: 'DELETE',
     }),
   runConsistencyCheck: (groupId: number) =>
-    fetchAPI<ConsistencyCheckResult>(
+    fetchAPI<{
+      job_id: number
+      group_id: number
+      status: string
+      total_pairs: number
+      completed_pairs: number
+      progress_percent: number
+    }>(
       `/api/v1/document-groups/${groupId}/consistency-check`,
       { method: 'POST' }
     ),
+  getConsistencyCheckStatus: (groupId: number, jobId: number) =>
+    fetchAPI<
+      ConsistencyCheckResult | {
+        job_id: number
+        group_id: number
+        status: string
+        total_pairs: number
+        completed_pairs: number
+        progress_percent: number
+        error?: string
+      }
+    >(`/api/v1/document-groups/${groupId}/consistency-check/${jobId}`),
 }

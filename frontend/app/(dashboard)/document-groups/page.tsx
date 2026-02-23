@@ -39,6 +39,8 @@ export default function DocumentGroupsPage() {
   const [selectedGroup, setSelectedGroup] = useState<DocumentGroupDetail | null>(null)
   const [checkResult, setCheckResult] = useState<ConsistencyCheckResult | null>(null)
   const [checking, setChecking] = useState(false)
+  const [checkProgress, setCheckProgress] = useState(0)
+  const [checkTotal, setCheckTotal] = useState(0)
 
   useEffect(() => {
     loadData()
@@ -88,12 +90,45 @@ export default function DocumentGroupsPage() {
     if (!selectedGroup) return
     setChecking(true)
     setCheckResult(null)
+    setCheckProgress(0)
+    setCheckTotal(0)
     try {
-      const result = await documentGroupsAPI.runConsistencyCheck(selectedGroup.id)
-      setCheckResult(result)
-    } catch (e) {
+      const job = await documentGroupsAPI.runConsistencyCheck(selectedGroup.id)
+      setCheckTotal(job.total_pairs)
+
+      // Poll for status every 2 seconds
+      while (true) {
+        await new Promise((r) => setTimeout(r, 2000))
+        try {
+          const status = await documentGroupsAPI.getConsistencyCheckStatus(
+            selectedGroup.id,
+            job.job_id
+          )
+          if ('findings' in status) {
+            // Completed - got full ConsistencyCheckResult
+            setCheckResult(status as ConsistencyCheckResult)
+            return
+          }
+          const jobStatus = status as {
+            status: string
+            total_pairs: number
+            completed_pairs: number
+            error?: string
+          }
+          setCheckProgress(jobStatus.completed_pairs)
+          setCheckTotal(jobStatus.total_pairs)
+          if (jobStatus.status === 'failed') {
+            setError(jobStatus.error || '整合性チェック処理中にエラーが発生しました')
+            return
+          }
+        } catch {
+          setError('ステータスの取得に失敗しました')
+          return
+        }
+      }
+    } catch (e: any) {
       console.error('Failed to run consistency check:', e)
-      setError('整合性チェックに失敗しました。LLM設定を確認してください。')
+      setError(e.message || '整合性チェックの開始に失敗しました。LLM設定を確認してください。')
     } finally {
       setChecking(false)
     }
@@ -220,11 +255,16 @@ export default function DocumentGroupsPage() {
                         disabled={checking || selectedGroup.members.length < 2}
                       >
                         {checking ? (
-                          <RefreshCw className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />
+                          <>
+                            <RefreshCw className="mr-1 h-4 w-4 animate-spin" aria-hidden="true" />
+                            チェック中... {checkTotal > 0 ? `${checkProgress}/${checkTotal}` : ''}
+                          </>
                         ) : (
-                          <Play className="mr-1 h-4 w-4" aria-hidden="true" />
+                          <>
+                            <Play className="mr-1 h-4 w-4" aria-hidden="true" />
+                            整合性チェック実行
+                          </>
                         )}
-                        整合性チェック実行
                       </Button>
                     </CardTitle>
                   </CardHeader>
@@ -281,6 +321,24 @@ export default function DocumentGroupsPage() {
                     )}
                   </CardContent>
                 </Card>
+
+                {/* Consistency Check Progress */}
+                {checking && checkTotal > 0 && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                        <span>整合性チェック進捗</span>
+                        <span>{checkProgress} / {checkTotal} ペア</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${checkTotal > 0 ? (checkProgress / checkTotal) * 100 : 0}%` }}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Consistency Check Results */}
                 {checkResult && (

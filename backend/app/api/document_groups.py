@@ -1,11 +1,18 @@
 """API endpoints for DocumentGroup management."""
 
-from fastapi import APIRouter, Depends, HTTPException
+import json
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.models.document import Document
-from app.models.document_group import DocumentGroup, DocumentGroupMember
+from app.models.document_group import (
+    ConsistencyCheckJob,
+    DocumentGroup,
+    DocumentGroupMember,
+)
 from app.schemas.document_group import (
     DocumentGroupCreate,
     DocumentGroupUpdate,
@@ -13,9 +20,13 @@ from app.schemas.document_group import (
     DocumentGroupDetailResponse,
     DocumentGroupMemberInfo,
     ConsistencyCheckResponse,
+    ConsistencyCheckJobResponse,
     ConsistencyFinding,
 )
 from app.services.llm_service import llm_service
+from app.core.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/document-groups", tags=["Document Groups"])
 
@@ -116,9 +127,9 @@ async def update_group(
         raise HTTPException(status_code=404, detail="Document group not found")
 
     if request.name is not None:
-        group.name = request.name  # type: ignore[assignment]
+        group.name = request.name
     if request.description is not None:
-        group.description = request.description  # type: ignore[assignment]
+        group.description = request.description
     db.commit()
     db.refresh(group)
 
@@ -154,7 +165,6 @@ async def add_member(group_id: int, document_id: int, db: Session = Depends(get_
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 
-    # Check if already a member
     existing = (
         db.query(DocumentGroupMember)
         .filter(
@@ -192,12 +202,15 @@ async def remove_member(group_id: int, document_id: int, db: Session = Depends(g
 
 @router.post(
     "/{group_id}/consistency-check",
-    response_model=ConsistencyCheckResponse,
+    response_model=ConsistencyCheckJobResponse,
+    status_code=202,
 )
-async def run_consistency_check(group_id: int, db: Session = Depends(get_db)):
-    """Run consistency check on all documents in the group."""
-    from app.services.consistency_check_service import check_consistency
-
+async def run_consistency_check(
+    group_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+):
+    """Start async consistency check on all documents in the group."""
     group = db.query(DocumentGroup).filter(DocumentGroup.id == group_id).first()
     if not group:
         raise HTTPException(status_code=404, detail="Document group not found")
@@ -214,35 +227,172 @@ async def run_consistency_check(group_id: int, db: Session = Depends(get_db)):
             detail="LLM service not available. Check provider configuration.",
         )
 
-    document_ids = [m.document_id for m in group.members]
-    raw_findings = await check_consistency(db, document_ids)
+    # Calculate total pairs: n*(n-1)/2
+    n = len(group.members)
+    total_pairs = n * (n - 1) // 2
 
-    high = sum(1 for f in raw_findings if f.get("severity") == "HIGH")
-    medium = sum(1 for f in raw_findings if f.get("severity") == "MEDIUM")
-    low = sum(1 for f in raw_findings if f.get("severity") == "LOW")
-
-    findings = [
-        ConsistencyFinding(
-            document_a_title=f.get("document_a_title", ""),
-            document_b_title=f.get("document_b_title", ""),
-            location_a=f.get("location_a"),
-            location_b=f.get("location_b"),
-            text_a=f.get("text_a"),
-            text_b=f.get("text_b"),
-            issue_type=f.get("issue_type", "UNKNOWN"),
-            severity=f.get("severity", "LOW"),
-            description=f.get("description", ""),
-            suggestion=f.get("suggestion"),
-        )
-        for f in raw_findings
-    ]
-
-    return ConsistencyCheckResponse(
-        group_id=group.id,
-        group_name=group.name,
-        total_findings=len(findings),
-        high_count=high,
-        medium_count=medium,
-        low_count=low,
-        findings=findings,
+    job = ConsistencyCheckJob(
+        group_id=group_id,
+        status="processing",
+        total_pairs=total_pairs,
+        completed_pairs=0,
     )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    document_ids = [m.document_id for m in group.members]
+
+    background_tasks.add_task(
+        execute_consistency_check_task,
+        job.id,
+        group_id,
+        document_ids,
+    )
+
+    return ConsistencyCheckJobResponse(
+        job_id=job.id,
+        group_id=group_id,
+        status="processing",
+        total_pairs=total_pairs,
+        completed_pairs=0,
+        progress_percent=0.0,
+    )
+
+
+@router.get("/{group_id}/consistency-check/{job_id}")
+async def get_consistency_check_status(
+    group_id: int,
+    job_id: int,
+    db: Session = Depends(get_db),
+):
+    """Get the status/result of a consistency check job."""
+    job = (
+        db.query(ConsistencyCheckJob)
+        .filter(
+            ConsistencyCheckJob.id == job_id,
+            ConsistencyCheckJob.group_id == group_id,
+        )
+        .first()
+    )
+    if not job:
+        raise HTTPException(status_code=404, detail="Consistency check job not found")
+
+    if job.status == "completed" and job.result_json:
+        raw_findings = json.loads(str(job.result_json))
+        high = sum(1 for f in raw_findings if f.get("severity") == "HIGH")
+        medium = sum(1 for f in raw_findings if f.get("severity") == "MEDIUM")
+        low = sum(1 for f in raw_findings if f.get("severity") == "LOW")
+
+        group = db.query(DocumentGroup).filter(DocumentGroup.id == group_id).first()
+        group_name = group.name if group else ""
+
+        findings = [
+            ConsistencyFinding(
+                document_a_title=f.get("document_a_title", ""),
+                document_b_title=f.get("document_b_title", ""),
+                location_a=f.get("location_a"),
+                location_b=f.get("location_b"),
+                text_a=f.get("text_a"),
+                text_b=f.get("text_b"),
+                issue_type=f.get("issue_type", "UNKNOWN"),
+                severity=f.get("severity", "LOW"),
+                description=f.get("description", ""),
+                suggestion=f.get("suggestion"),
+            )
+            for f in raw_findings
+        ]
+
+        return ConsistencyCheckResponse(
+            group_id=group_id,
+            group_name=group_name,
+            total_findings=len(findings),
+            high_count=high,
+            medium_count=medium,
+            low_count=low,
+            findings=findings,
+        )
+
+    # Return progress
+    progress = 0.0
+    if job.total_pairs and job.total_pairs > 0:
+        progress = float((job.completed_pairs or 0)) / float(job.total_pairs) * 100
+
+    error_detail = None
+    if job.status == "failed":
+        error_detail = job.error_message
+
+    return {
+        "job_id": job.id,
+        "group_id": group_id,
+        "status": job.status,
+        "total_pairs": job.total_pairs or 0,
+        "completed_pairs": job.completed_pairs or 0,
+        "progress_percent": round(progress, 1),
+        "error": error_detail,
+    }
+
+
+async def execute_consistency_check_task(
+    job_id: int,
+    group_id: int,
+    document_ids: list[int],
+):
+    """Background task for consistency check execution."""
+    from app.db.database import SessionLocal
+    from app.services.consistency_check_service import check_consistency_with_progress
+
+    logger.info(
+        f"Starting consistency check: job_id={job_id}, group_id={group_id}, "
+        f"documents={document_ids}"
+    )
+
+    db = SessionLocal()
+    try:
+
+        def on_pair_complete(completed: int):
+            job = (
+                db.query(ConsistencyCheckJob)
+                .filter(ConsistencyCheckJob.id == job_id)
+                .first()
+            )
+            if job:
+                job.completed_pairs = completed
+                db.commit()
+
+        all_findings = await check_consistency_with_progress(
+            db=db,
+            document_ids=document_ids,
+            on_pair_complete=on_pair_complete,
+        )
+
+        job = (
+            db.query(ConsistencyCheckJob)
+            .filter(ConsistencyCheckJob.id == job_id)
+            .first()
+        )
+        if job:
+            job.status = "completed"
+            job.result_json = json.dumps(all_findings, ensure_ascii=False)
+            job.completed_at = datetime.now(timezone.utc)
+            db.commit()
+
+        logger.info(
+            f"Consistency check completed: job_id={job_id}, "
+            f"findings={len(all_findings)}"
+        )
+    except Exception as e:
+        logger.error(
+            f"Consistency check failed: job_id={job_id}, error={e}", exc_info=True
+        )
+        job = (
+            db.query(ConsistencyCheckJob)
+            .filter(ConsistencyCheckJob.id == job_id)
+            .first()
+        )
+        if job:
+            job.status = "failed"
+            job.error_message = str(e)
+            db.commit()
+    finally:
+        db.close()

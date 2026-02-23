@@ -200,6 +200,8 @@ function ProjectDetail({
   const { showToast } = useToast()
   const [generating, setGenerating] = useState(false)
   const [comparing, setComparing] = useState(false)
+  const [compareProgress, setCompareProgress] = useState(0)
+  const [compareTotal, setCompareTotal] = useState(0)
   const [showSubsidiaryModal, setShowSubsidiaryModal] = useState(false)
   const [editingChecklist, setEditingChecklist] = useState(false)
   const [editItems, setEditItems] = useState<{ item_text: string; category: string | null }[]>([])
@@ -219,10 +221,36 @@ function ProjectDetail({
 
   async function handleCompare() {
     setComparing(true)
+    setCompareProgress(0)
+    setCompareTotal(0)
     try {
       const result = await comparisonsAPI.compare(project.id)
-      showToast(`${result.total}件の比較が完了しました`, 'success')
-      onUpdate()
+      setCompareTotal(result.total_items)
+
+      // Poll for status every 2 seconds
+      const poll = async () => {
+        while (true) {
+          await new Promise((r) => setTimeout(r, 2000))
+          try {
+            const status = await comparisonsAPI.getStatus(project.id)
+            setCompareProgress(status.completed_items)
+            setCompareTotal(status.total_items)
+            if (status.status === 'completed') {
+              showToast(`${status.total_items}件の比較が完了しました`, 'success')
+              onUpdate()
+              return
+            }
+            if (status.status === 'failed') {
+              showToast('比較処理中にエラーが発生しました', 'error')
+              return
+            }
+          } catch {
+            showToast('ステータスの取得に失敗しました', 'error')
+            return
+          }
+        }
+      }
+      await poll()
     } catch (error: any) {
       showToast(error.message || '比較に失敗しました', 'error')
     } finally {
@@ -480,7 +508,7 @@ function ProjectDetail({
                 {comparing ? (
                   <>
                     <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                    比較中...
+                    比較中... {compareTotal > 0 ? `${compareProgress}/${compareTotal}` : ''}
                   </>
                 ) : project.results.length > 0 ? (
                   '再比較'
@@ -490,6 +518,21 @@ function ProjectDetail({
               </Button>
             )}
           </div>
+
+          {comparing && compareTotal > 0 && (
+            <div className="mb-4">
+              <div className="flex items-center justify-between text-sm text-gray-600 mb-1">
+                <span>比較進捗</span>
+                <span>{compareProgress} / {compareTotal} 件</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${compareTotal > 0 ? (compareProgress / compareTotal) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+          )}
 
           {project.results.length > 0 ? (
             <ComparisonResults results={project.results} />
