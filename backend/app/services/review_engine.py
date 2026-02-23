@@ -281,13 +281,37 @@ class ReviewEngine:
         except Exception as e:
             review = db.query(Review).filter(Review.id == review_id).first()
             if review:
-                review.status = "failed"
-                db.commit()
-            logger.error(
-                f"Review failed | review_id={review_id} | error={str(e)}",
-                exc_info=True,
-            )
-            raise e
+                if all_findings:
+                    # Findings were generated — mark as completed despite errors
+                    review.status = "completed"
+                    review.completed_at = datetime.now(timezone.utc)
+                    db.commit()
+                    logger.warning(
+                        f"Review completed with errors | review_id={review_id} | "
+                        f"findings={len(all_findings)} | error={str(e)}",
+                        exc_info=True,
+                    )
+
+                    # Attempt term extraction even after partial errors
+                    try:
+                        await term_extraction_service.extract_candidates(
+                            db=db,
+                            review_id=review_id,
+                            document_id=document.id,
+                        )
+                    except Exception as te:
+                        logger.warning(
+                            f"Term extraction failed after partial review | "
+                            f"review_id={review_id} | error={str(te)}"
+                        )
+                else:
+                    review.status = "failed"
+                    db.commit()
+                    logger.error(
+                        f"Review failed | review_id={review_id} | error={str(e)}",
+                        exc_info=True,
+                    )
+                    raise e
 
         return all_findings
 

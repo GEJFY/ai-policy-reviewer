@@ -91,8 +91,8 @@ export default function ReviewDetailPage() {
       setFindings(findingsData)
       setError(null)
 
-      // Load term candidates (non-blocking)
-      if (reviewData.status === 'completed') {
+      // Load term candidates (non-blocking) — load if review finished
+      if (reviewData.status === 'completed' || reviewData.status === 'failed') {
         termCandidatesAPI.list({ review_id: reviewId })
           .then(setTermCandidates)
           .catch(() => {})
@@ -609,7 +609,7 @@ export default function ReviewDetailPage() {
       </div>
 
       {/* Term Candidates */}
-      {review.status === 'completed' && termCandidates.length > 0 && (
+      {termCandidates.length > 0 && (
         <div className="mt-8 p-6">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
             用語候補
