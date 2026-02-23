@@ -20,7 +20,6 @@ import {
   AlertTriangle,
   GitCompareArrows,
   FileSpreadsheet,
-  FolderSync,
   FileDown,
   Layers,
   Eye,
@@ -103,7 +102,7 @@ export default function LandingPage() {
       <section className="relative overflow-hidden pt-32 pb-20 md:pt-40 md:pb-32">
         <div className="absolute inset-0 -z-10">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 h-[600px] w-[600px] rounded-full bg-blue-50 blur-3xl opacity-60" />
-          <div className="absolute top-40 right-0 h-[400px] w-[400px] rounded-full bg-indigo-50 blur-3xl opacity-40" />
+          <div className="absolute top-40 right-0 h-[400px] w-[400px] rounded-full bg-blue-100 blur-3xl opacity-40" />
         </div>
 
         <div className="mx-auto max-w-7xl px-6">
@@ -114,7 +113,7 @@ export default function LandingPage() {
             </div>
             <h1 className="mb-6 text-4xl font-extrabold tracking-tight text-gray-900 sm:text-5xl md:text-6xl">
               <span className="block">規程・社内文書の</span>
-              <span className="block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              <span className="block bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
                 レビュー品質を革新する
               </span>
             </h1>
@@ -404,12 +403,12 @@ export default function LandingPage() {
       </section>
 
       {/* Comparison Feature Highlight */}
-      <section id="comparison" className="py-20 md:py-28 bg-gradient-to-br from-indigo-50 to-blue-50">
+      <section id="comparison" className="py-20 md:py-28 bg-gradient-to-br from-blue-50 to-gray-50">
         <div className="mx-auto max-w-7xl px-6">
           <AnimatedSection>
           <div className="grid gap-12 md:grid-cols-2 items-center">
             <div>
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-indigo-100 px-4 py-1.5 text-sm font-medium text-indigo-700">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-blue-100 px-4 py-1.5 text-sm font-medium text-blue-700">
                 <GitCompareArrows className="h-4 w-4" />
                 NEW: 親子会社規程比較
               </div>
@@ -573,7 +572,7 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="bg-gradient-to-br from-blue-600 to-indigo-700 py-20 md:py-28">
+      <section className="bg-gradient-to-br from-blue-600 to-blue-700 py-20 md:py-28">
         <div className="mx-auto max-w-3xl px-6 text-center">
           <h2 className="text-3xl font-bold tracking-tight text-white md:text-4xl">
             規程レビューの未来を、今すぐ体験
