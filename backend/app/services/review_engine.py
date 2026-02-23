@@ -251,9 +251,10 @@ class ReviewEngine:
 
             # Update review status
             review = db.query(Review).filter(Review.id == review_id).first()
-            review.status = "completed"
-            review.completed_at = datetime.now(timezone.utc)
-            db.commit()
+            if review:
+                review.status = "completed"
+                review.completed_at = datetime.now(timezone.utc)
+                db.commit()
 
             duration_sec = time.time() - start_time
             logger.info(
